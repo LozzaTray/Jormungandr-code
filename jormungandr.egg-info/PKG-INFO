@@ -1,0 +1,13 @@
+Metadata-Version: 1.2
+Name: jormungandr
+Version: 0.0.1
+Summary: A small example package
+Home-page: https://github.com/LozzaTray/Jormungandr
+Author: Lawrence Tray
+Author-email: ltray99@gmail.com
+License: UNKNOWN
+Description: UNKNOWN
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
