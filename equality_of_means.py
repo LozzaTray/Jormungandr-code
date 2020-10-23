@@ -1,7 +1,7 @@
 from data.read import read_csv
 from model.player import Player
 from typing import List
-from hypothesis.test_statistics import two_samples_mean_ll_ratio
+from hypothesis.test_statistics import two_samples_mean_ll_ratio, students_z_test
 
 significance_level = 95
 
@@ -13,11 +13,12 @@ def run():
         if player.isFirstTeam():
             k += player.attendances
             n += player.attendances + player.absences
-        else:
+        elif player.isSecondTeam():
             l += player.attendances
             m += player.attendances + player.absences
 
     t, p = two_samples_mean_ll_ratio(n, m, k, l, debug=True)
+    z, p = students_z_test(n, m, k, l, debug=True)
 
     if (100*p < (100 - significance_level)):
         print("Null Hypothesis rejected at the {}% significance level".format(significance_level))

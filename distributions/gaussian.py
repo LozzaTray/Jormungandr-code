@@ -1,10 +1,12 @@
 import math
+from scipy.stats import norm
 
 
-def pdf(x, mu=0, sigma2=1):
+def pdf(x, mu=0, sigma=1):
     """pdf for a gaussian"""
-    return (1/math.sqrt(2*pi*sigma2)) * math.exp(- ((x-mu)**2) / (2*sigma2))
+    return norm.pdf(x, loc=mu, scale=sigma)
 
 
-def cdf(x, mu=0, sigma2=1):
+def cdf(x, mu=0, sigma=1):
     """cdf for a gaussian"""
+    return norm.cdf(x, loc=mu, scale=sigma)

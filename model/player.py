@@ -12,3 +12,6 @@ class Player:
 
     def isFirstTeam(self):
         return self.team == 1
+
+    def isSecondTeam(self):
+        return self.team == 2
