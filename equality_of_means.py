@@ -3,6 +3,7 @@ from model.player import Player
 from typing import List
 from hypothesis.test_statistics import two_samples_mean_ll_ratio
 
+significance_level = 95
 
 def run():
     players: List[Player] = read_csv("training_attendance.csv", Player)
@@ -15,8 +16,14 @@ def run():
         else:
             l += player.attendances
             m += player.attendances + player.absences
-    
-    t = two_samples_mean_ll_ratio(n, m, k, l, debug=True)
+
+    t, p = two_samples_mean_ll_ratio(n, m, k, l, debug=True)
+
+    if (100*p < (100 - significance_level)):
+        print("Null Hypothesis rejected at the {}% significance level".format(significance_level))
+        print("Means are different")
+    else:
+        print("Insufficient evedence to reject null")
 
     
 

@@ -2,6 +2,7 @@
 great website: https://machinelearningmastery.com/statistical-hypothesis-tests-in-python-cheat-sheet/ 
 """
 import math
+from distributions.chi_squared import cdf as chi_squared_cdf
 
 
 def bern_kl_divergence(p, q):
@@ -19,11 +20,13 @@ def two_samples_mean_ll_ratio(n, m, k, l, debug=False):
     r_hat = (k + l) / float(n + m)
 
     t = n * bern_kl_divergence(p_hat, r_hat) + m * bern_kl_divergence(q_hat, r_hat)
+    p = 1 - chi_squared_cdf(t, 1)
 
     if debug:
         print("Population sizes:\n n = {} , m = {}\n".format(n, m))
         print("Sampled mean of each:\n p^ = {} , q^ = {}\n".format(p_hat, q_hat))
         print("Joint mean:\n r^ = {}\n".format(r_hat))
         print("t-statistic: t = {}".format(t))
+        print("p-value: p = {}\n".format(p))
 
-    return t
+    return t, p
