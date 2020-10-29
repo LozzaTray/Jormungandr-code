@@ -21,7 +21,7 @@ def two_samples_mean_ll_ratio(n, m, k, l, debug=False):
 
     t = n * bern_kl_divergence(p_hat, r_hat) + m * \
         bern_kl_divergence(q_hat, r_hat)
-    p = 1 - chi_squared.cdf(t, 1)
+    p = 1 - chi_squared.cdf(2*t, 1) # 2*t ~ chi_1^2 
 
     if debug:
         print("Population sizes:\n n = {} , m = {}\n".format(n, m))
