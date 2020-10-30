@@ -11,6 +11,9 @@ def bern_kl_divergence(p, q):
     2 Bernoulli distributions with parameters p and q
     D(Bern(p) || Bern(q))
     """
+    offset = 1E-10
+    p += offset
+    q += offset
     return p * math.log(p / q) + (1-p) * math.log((1-p) / (1-q))
 
 

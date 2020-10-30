@@ -13,7 +13,7 @@ class FacebookGraph:
     """
     
 
-    def __init__(self, graphId, significance_level=95):
+    def __init__(self, graphId, significance_level=99):
         self.graphId = str(graphId)
         self.edges = self.read_edges()
         self.feature_names = self.read_feature_names()
@@ -59,8 +59,16 @@ class FacebookGraph:
         node_b_features = self.node_features.get(node_b)
         return (feature_id in node_a_features) == (feature_id in node_b_features)
 
+    def same_community_multiple(self, node_a, node_b, feature_ids):
+        node_a_features = self.node_features.get(node_a)
+        node_b_features = self.node_features.get(node_b)
+        for feature_id in feature_ids:
+            if (feature_id in node_a_features) and (feature_id in node_b_features):
+                return True
+        return False
 
-    def hypothesis_test(self, feature_id):
+
+    def hypothesis_test_single(self, feature_id):
         """Is there evidence to suggest this feature affects how people interact"""
         print("Testing whether feature-{}: {}".format(feature_id, self.feature_names.get(feature_id)))
         print("Impacts probability of two random individuals being FB friends\n")
@@ -97,3 +105,64 @@ class FacebookGraph:
             print("Feature impacts friendship probability")
         else:
             print("Insufficient evidence to reject null")
+
+
+    def hypothesis_test_multi_group(self, feature_ids):
+        """Is there evidence to suggest this feature affects how people interact"""
+        print("Testing whether features: {}".format(feature_ids))
+        print("values: {}".format([self.feature_names.get(feature_id) for feature_id in feature_ids]))
+        print("Impact probability of two random individuals being FB friends\n")
+
+        num_communities = len(feature_ids)
+        N_arr = [0] * num_communities # length
+        nodes = set()
+
+        for i in range(0, num_communities):
+            feature_id = feature_ids[i]
+            for node, features in self.node_features.items():
+                if feature_id in features:
+                    N_arr[i] += 1
+                    nodes.add(node)
+
+        N = len(nodes)
+        if N != sum(N_arr):
+            raise ValueError("Sets not disjoint")
+
+        print("Num nodes in each category:\n{}\n".format(N_arr))
+        E_max = int(N * (N + 1) / 2) # max edges possible
+
+        m = 0 # num edges possible between communities
+        for i in range(0, num_communities):
+            for j in range(i+1, num_communities):
+                m += N_arr[i] * N_arr[j]
+        
+        n = E_max - m # num edges possible within communities
+
+        k = 0 # num edges within same community
+        l = 0 # num edges between communities
+
+        for edge in self.edges:
+            if edge[0] in nodes and edge[1] in nodes:
+                if self.same_community_multiple(edge[0], edge[1], feature_ids):
+                    k += 1
+                else:
+                    l += 1
+
+        t, p = two_samples_mean_ll_ratio(n, m, k, l, debug=True)
+        # print("t-statistic: t = {:.3f}".format(t))
+        # print("p-value: p = {:.5f}\n".format(p))
+
+        if (100*p < (100 - self.significance_level)):
+            print("Null Hypothesis rejected at the {}% significance level".format(self.significance_level))
+            print("Feature impacts friendship probability")
+        else:
+            print("Insufficient evidence to reject null")
+
+
+    def hypothesis_test_keyword(self, keyword):
+        feature_ids = []
+        for feature_id, feature_name in self.feature_names.items():
+            if keyword in feature_name:
+                feature_ids.append(feature_id)
+                
+        return self.hypothesis_test_multi_group(feature_ids)
