@@ -24,7 +24,7 @@ def run():
         print("Null Hypothesis rejected at the {}% significance level".format(significance_level))
         print("Means are different")
     else:
-        print("Insufficient evedence to reject null")
+        print("Insufficient evidence to reject null")
 
     
 
