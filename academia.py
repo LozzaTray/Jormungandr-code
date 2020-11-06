@@ -1,10 +1,11 @@
 from data.names import NameList
+from data.aminer import AMiner
 
 def run():
+    print("Reading in names...")
     name_list = NameList()
-    print(name_list.get_gender_of("Brian"))
-    print(name_list.get_gender_of("Alice"))
-    print(name_list.get_gender_of("kajshkjha"))
+    print("Reading in authors...")
+    aminer = AMiner(name_list)
 
 
 if __name__ == "__main__":
