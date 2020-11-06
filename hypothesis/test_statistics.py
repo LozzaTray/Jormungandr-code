@@ -31,7 +31,7 @@ def two_samples_mean_ll_ratio(n, m, k, l, debug=False):
         print("Sampled mean of each:\n p^ = {:.3f} , q^ = {:.3f}\n".format(p_hat, q_hat))
         print("Joint mean:\n r^ = {:.3f}\n".format(r_hat))
         print("t-statistic: t = {:.3f}".format(t))
-        print("p-value: p = {:.5f}\n".format(p))
+        print("p-value: p = {:.7f}\n".format(p))
 
     return t, p
 
@@ -50,6 +50,6 @@ def students_z_test(n, m, k, l, debug=False):
         print("Sampled mean of each:\n p^ = {:.3f} , q^ = {:.3f}\n".format(p_hat, q_hat))
         print("Joint mean:\n r^ = {:.3f}\n".format(r_hat))
         print("z-statistic: z = {:.3f}".format(z))
-        print("p-value: p = {:.5f}\n".format(p))
+        print("p-value: p = {:.7f}\n".format(p))
 
     return z, p
