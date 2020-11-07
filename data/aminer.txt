@@ -1,0 +1,8 @@
+Site: https://www.aminer.org/aminernetwork
+Paper: https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0066212
+
+Files:
+
+Author.txt - all author info
+Coauthor.txt - edges between authors
+Paper.txt - each paper info
