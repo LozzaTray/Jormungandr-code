@@ -140,14 +140,14 @@ class FacebookGraph:
         a2b_max = N_a * N_b
         b2b_max = int(N_b * (N_b + 1) / 2)
 
-        print("Link proportions:\na2a={:.5f} , a2b={:.5f} , b2b={:.5f}\n".format(a2a / a2a_max, a2b / a2b_max, b2b / b2b_max))
+        print("Link proportions:\na2a={:.3e} , a2b={:.3e} , b2b={:.3e}\n".format(a2a / a2a_max, a2b / a2b_max, b2b / b2b_max))
 
-        t, p1 = two_samples_mean_ll_ratio(a2a_max, a2b_max, a2a, b2b)
+        t, p1 = two_samples_mean_ll_ratio(a2a_max, a2b_max, a2a, a2b)
         t, p2 = two_samples_mean_ll_ratio(a2a_max, b2b_max, a2a, b2b)
         t, p3 = two_samples_mean_ll_ratio(a2b_max, b2b_max, a2b, b2b)
 
         print("p-values for (1: a2a v a2b ; 2: a2a v b2b ; 3: a2b v b2b):")
-        print("p1 = {:.5f} , p2 = {:.5f} , p3 = {:.5f}".format(p1, p2, p3))
+        print("p1 = {:.3e} , p2 = {:.3e} , p3 = {:.3e}".format(p1, p2, p3))
 
     def hypothesis_test_multi_group(self, feature_ids):
         """Is there evidence to suggest this feature affects how people interact"""
