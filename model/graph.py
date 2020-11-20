@@ -98,7 +98,10 @@ class Graph:
         G = nx.Graph()
         G.add_nodes_from(self.vertex_to_index.keys())
         G.add_edges_from(self.edges_raw)
-        nx.draw_networkx(G, pos=node_pos, with_labels=False, node_size=2, node_color=node_color, width=0.1) 
+        plt.figure(figsize=(6,3))
+        nx.draw_networkx(G, pos=node_pos, with_labels=False, node_size=2, node_color=node_color, width=0.1)
+        plt.xlim(-6, 6)
+        plt.ylim(-3, 3) 
         plt.show()
 
 
@@ -117,7 +120,7 @@ class Graph:
 
     def gen_layout(self):
         pos = self.vertex_to_index.copy()
-        c = 2
+        c = 3
         s = 1
         for vertex, index in self.vertex_to_index.items():
             random = s * np.random.normal(size=(2))
