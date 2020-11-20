@@ -92,30 +92,38 @@ class Graph:
         print("Partitioned such that p={} in community 1".format(community_one_ratio))
 
 
-    def draw(self):
-        node_color = self.build_color_arr()
+    def draw(self, custom_labels={}):
+        node_color = self.build_color_arr(custom_labels)
+
         node_pos = self.gen_layout()
         G = nx.Graph()
         G.add_nodes_from(self.vertex_to_index.keys())
         G.add_edges_from(self.edges_raw)
         plt.figure(figsize=(6,3))
-        nx.draw_networkx(G, pos=node_pos, with_labels=False, node_size=2, node_color=node_color, width=0.1)
+        nx.draw_networkx(G, pos=node_pos, with_labels=False, node_size=10, node_color=node_color, width=0.1)
         plt.xlim(-6, 6)
         plt.ylim(-3, 3) 
         plt.show()
 
 
-    def build_color_arr(self):
-        if self.assignments is not None:
-            colors = []
-            for vertex, index in self.vertex_to_index.items():
+    def build_color_arr(self, custom_labels):
+        colors = []
+        
+        if len(custom_labels) == 0:
+            for index in self.vertex_to_index.values():
                 if self.assignments[index] == 1:
                     colors.append("blue")
                 else:
                     colors.append("red")
-            return colors
+
         else:
-            return "orange"
+            for vertex in self.vertex_to_index.keys():
+                if custom_labels.get(vertex) == True:
+                    colors.append("purple")
+                else:
+                    colors.append("orange")
+
+        return colors         
 
 
     def gen_layout(self):
@@ -130,6 +138,18 @@ class Graph:
                 pos[vertex] = (-c + random[0], random[1])
 
         return pos
+
+
+    def proportions_in_each(self, custom_labels):
+        assigned_by_custom = np.zeros((2,2))
+        for vertex, index in self.vertex_to_index.items():
+            i = 1 if self.assignments[index] == 1 else 0
+            j = 1 if custom_labels.get(vertex) == True else 0
+            assigned_by_custom[i, j] += 1
+
+        print("[i, j] is # in detected community i of custom label j")
+        print(assigned_by_custom)
+
 
 
 

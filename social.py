@@ -14,9 +14,11 @@ def run():
     #fb.hypothesis_test_keyword("last_name")
     #fb.hypothesis_test_keyword("hometown")
     #fb.hypothesis_test_keyword("language") # not disjoint
+    nodes_by_gender = fb.get_node_has_feature_dict(77)
     graph = Graph(fb.edges)
     graph.abp()
-    graph.draw()
+    graph.proportions_in_each(nodes_by_gender)
+    graph.draw(nodes_by_gender)
 
 
 if __name__ == "__main__":

@@ -208,3 +208,23 @@ class FacebookGraph:
                 feature_ids.append(feature_id)
                 
         return self.hypothesis_test_multi_group(feature_ids)
+
+
+    def get_node_set(self):
+        origin_vertices = set([edge[0] for edge in self.edges])
+        destin_vertices = set([edge[1] for edge in self.edges])
+        return origin_vertices.union(destin_vertices)
+
+    
+    def get_node_has_feature_dict(self, feature_id):
+        node_set = self.get_node_set()
+        node_has_feature = {}
+
+        for node in node_set:
+            node_features = self.node_features.get(node)
+            if feature_id in node_features:
+                node_has_feature[node] = True
+            else:
+                node_has_feature[node] = False
+
+        return node_has_feature
