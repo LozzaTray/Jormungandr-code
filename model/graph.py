@@ -2,6 +2,9 @@ import numpy as np
 from tqdm import tqdm
 import math
 
+import networkx as nx
+import matplotlib.pyplot as plt
+
 
 class Graph:
 
@@ -15,6 +18,9 @@ class Graph:
         # constants
         self.N = len(vertex_set)
         self.M = len(edges)
+
+        # edges
+        self.edges_raw = edges
 
         # relabel vertices with an index
         self.index_to_vertex = {}
@@ -36,6 +42,9 @@ class Graph:
 
             self.adjacency_matrix[a, b] += 1
             self.adjacency_matrix[b, a] += 1
+
+        self.assignments = None
+        print("Initialised graph with N={} nodes and M={} edges".format(self.N, self.M))
 
 
     def abp(self):
@@ -76,9 +85,51 @@ class Graph:
             for vd in vd_set:
                 output[v] += y[T-1, vd, v]
 
-        print(np.mean(np.abs(output)))
+        self.output = output
         self.assignments = (output > 0).astype(int)
-        print(self.assignments)
+
+        community_one_ratio = np.sum(self.assignments) / self.N
+        print("Partitioned such that p={} in community 1".format(community_one_ratio))
+
+
+    def draw(self):
+        node_color = self.build_color_arr()
+        node_pos = self.gen_layout()
+        G = nx.Graph()
+        G.add_nodes_from(self.vertex_to_index.keys())
+        G.add_edges_from(self.edges_raw)
+        nx.draw_networkx(G, pos=node_pos, with_labels=False, node_size=2, node_color=node_color, width=0.1) 
+        plt.show()
+
+
+    def build_color_arr(self):
+        if self.assignments is not None:
+            colors = []
+            for vertex, index in self.vertex_to_index.items():
+                if self.assignments[index] == 1:
+                    colors.append("blue")
+                else:
+                    colors.append("red")
+            return colors
+        else:
+            return "orange"
+
+
+    def gen_layout(self):
+        pos = self.vertex_to_index.copy()
+        c = 2
+        s = 1
+        for vertex, index in self.vertex_to_index.items():
+            random = s * np.random.normal(size=(2))
+            if self.assignments[index] == 1:
+                pos[vertex] = (c + random[0], random[1])
+            else:
+                pos[vertex] = (-c + random[0], random[1])
+
+        return pos
+
+
+
 
 
 

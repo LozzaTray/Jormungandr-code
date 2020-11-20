@@ -5,7 +5,8 @@ from model.graph import Graph
 
 
 def run():
-    fb = FacebookGraph(0)
+    num = 0
+    fb = FacebookGraph(num)
     #fb.hypothesis_test_threeway(77)
     #fb.hypothesis_test_keyword("gender")
     #fb.hypothesis_test_keyword("birthday")
@@ -15,7 +16,9 @@ def run():
     #fb.hypothesis_test_keyword("language") # not disjoint
     graph = Graph(fb.edges)
     graph.abp()
+    graph.draw()
 
 
 if __name__ == "__main__":
+    print("Analysing facebook data")
     run()
