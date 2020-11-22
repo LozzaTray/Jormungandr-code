@@ -96,13 +96,14 @@ class Graph:
         node_color = self.build_color_arr(custom_labels)
 
         node_pos = self.gen_layout()
+        #node_pos = None
         G = nx.Graph()
         G.add_nodes_from(self.vertex_to_index.keys())
         G.add_edges_from(self.edges_raw)
-        plt.figure(figsize=(6,3))
+        plt.figure(figsize=(7,4))
         nx.draw_networkx(G, pos=node_pos, with_labels=False, node_size=10, node_color=node_color, width=0.1)
-        plt.xlim(-6, 6)
-        plt.ylim(-3, 3) 
+        plt.xlim(-7, 7)
+        plt.ylim(-4, 4) 
         plt.show()
 
 

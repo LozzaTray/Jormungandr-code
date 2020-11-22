@@ -19,6 +19,7 @@ def run():
     graph.abp()
     graph.proportions_in_each(nodes_by_gender)
     graph.draw(nodes_by_gender)
+    graph.draw()
 
 
 if __name__ == "__main__":

@@ -6,6 +6,13 @@ from hypothesis.test_statistics import two_samples_mean_ll_ratio, students_z_tes
 significance_level = 95
 
 def run():
+    t, p = two_samples_mean_ll_ratio(6, 9, 5, 3, debug=True)
+    print(t)
+    print(p)
+    z, p = students_z_test(6, 9, 5, 3, debug=True)
+    print
+
+
     players: List[Player] = read_csv("training_attendance.csv", Player)
     n = m = k = l = 0
 
