@@ -13,16 +13,23 @@ class FacebookGraph:
     """
     
 
-    def __init__(self, graphId, significance_level=99):
-        self.graphId = str(graphId)
+    def __init__(self, ego_id, significance_level=99):
+        self.ego_id = str(ego_id)
         self.edges = self.read_edges()
         self.feature_names = self.read_feature_names()
         self.node_features = self.read_node_features()
         self.significance_level = significance_level
 
+        # add edges from ego node
+        for node_id in self.node_features.keys():
+            self.edges.append((self.ego_id, node_id))
+
+        # add ego features
+        self.node_features[self.ego_id] = self.read_ego_features()
+
     
     def read_graph_file(self, extension, delimiter, transform_function):
-        filepath = os.path.join(facebook_dir, self.graphId + extension)
+        filepath = os.path.join(facebook_dir, self.ego_id + extension)
         with open(filepath) as csvfile:
             reader = csv.reader(csvfile, delimiter=delimiter)
             rows = [transform_function(row) for row in reader]
@@ -43,6 +50,15 @@ class FacebookGraph:
         features_arr = self.read_graph_file(extension, delimiter, feature_transform)
         return {int(feature[0]): feature[1] for feature in features_arr}
 
+
+    def read_ego_features(self):
+        extension = ".egofeat"
+        delimiter = " "
+
+        boolean_arr_to_set = lambda boolean_arr: {idx for idx, feature_set in enumerate(boolean_arr) if feature_set == "1"}
+        feature_set = self.read_graph_file(extension, delimiter, boolean_arr_to_set)
+        return feature_set
+
     
     def read_node_features(self):
         extension = ".feat"
@@ -50,14 +66,15 @@ class FacebookGraph:
         node_transform = lambda node_row: (node_row[0], node_row[1:])
         boolean_arr_to_set = lambda boolean_arr: {idx for idx, feature_set in enumerate(boolean_arr) if feature_set == "1"}
 
-        features_by_node = self.read_graph_file(extension, delimiter, node_transform)
-        return {node_feature[0]: boolean_arr_to_set(node_feature[1]) for node_feature in features_by_node}
+        features_by_node_arr = self.read_graph_file(extension, delimiter, node_transform)
+        return {node_feature[0]: boolean_arr_to_set(node_feature[1]) for node_feature in features_by_node_arr}
 
 
     def same_community(self, node_a, node_b, feature_id):
         node_a_features = self.node_features.get(node_a)
         node_b_features = self.node_features.get(node_b)
         return (feature_id in node_a_features) == (feature_id in node_b_features)
+
 
     def same_community_multiple(self, node_a, node_b, feature_ids):
         node_a_features = self.node_features.get(node_a)

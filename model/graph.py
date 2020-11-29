@@ -92,7 +92,19 @@ class Graph:
         print("Partitioned such that p={} in community 1".format(community_one_ratio))
 
 
-    def draw(self, custom_labels={}):
+    def draw_standard(self, custom_labels={}):
+        node_color = self.build_color_arr(custom_labels)
+
+        G = nx.Graph()
+        G.add_nodes_from(self.vertex_to_index.keys())
+        G.add_edges_from(self.edges_raw)
+        plt.figure()
+        nx.draw_networkx(G, with_labels=False, node_size=10, node_color=node_color, width=0.1)
+        plt.show()
+
+
+
+    def draw_partition(self, custom_labels={}):
         node_color = self.build_color_arr(custom_labels)
 
         node_pos = self.gen_layout()

@@ -18,8 +18,9 @@ def run():
     graph = Graph(fb.edges)
     graph.abp()
     graph.proportions_in_each(nodes_by_gender)
-    graph.draw(nodes_by_gender)
-    graph.draw()
+    graph.draw_partition(nodes_by_gender)
+    graph.draw_standard(nodes_by_gender)
+    graph.draw_standard()
 
 
 if __name__ == "__main__":
