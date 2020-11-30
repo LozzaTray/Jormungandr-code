@@ -1,6 +1,9 @@
 import os
 import csv
 from hypothesis.test_statistics import two_samples_mean_ll_ratio, students_z_test
+from distributions.sigmoid import sigmoid
+import numpy as np
+from tqdm import tqdm
 
 
 curr_dir = os.path.dirname(__file__)
@@ -26,6 +29,11 @@ class FacebookGraph:
 
         # add ego features
         self.node_features[self.ego_id] = self.read_ego_features()
+
+        # constants
+        self.N = len(self.node_features)
+        self.M = len(self.edges)
+        self.D = len(self.feature_names)
 
     
     def read_graph_file(self, extension, delimiter, transform_function):
@@ -57,7 +65,7 @@ class FacebookGraph:
 
         boolean_arr_to_set = lambda boolean_arr: {idx for idx, feature_set in enumerate(boolean_arr) if feature_set == "1"}
         feature_set = self.read_graph_file(extension, delimiter, boolean_arr_to_set)
-        return feature_set
+        return feature_set[0]
 
     
     def read_node_features(self):
@@ -245,3 +253,38 @@ class FacebookGraph:
                 node_has_feature[node] = False
 
         return node_has_feature
+
+
+    def gradient_ascent(self, posterior_probs_dict):
+        print("Performing gradient ascent...")
+        X = -1 * np.ones((self.D + 1, self.N)) # initialise as all -1 and only turn +Ve set features
+
+        node_id_arr = np.zeros(self.N)
+        t = np.zeros((self.N, 1))
+
+        index = 0
+        for node_id, features in self.node_features.items():
+            node_id_arr[index] = node_id
+            t[index, 0] = posterior_probs_dict[node_id]
+
+            for feature in features:
+                X[feature, index] = 1
+
+        const = np.matmul(X, t - 1)
+        w = np.random.randn(self.D + 1, 1)
+
+        max_iters = 100
+        alpha = 0.1
+        eta = 10
+        rate = 0.95
+
+        for i in tqdm(range(0, max_iters)):
+            Xw = np.matmul(np.transpose(X), w)
+            sXw = sigmoid(Xw)
+            w = w + eta * (const + np.matmul(X, sXw) - alpha * w)
+            eta = eta * rate
+
+        return w
+
+
+        

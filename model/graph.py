@@ -85,11 +85,26 @@ class Graph:
             for vd in vd_set:
                 output[v] += y[T-1, vd, v]
 
+        pos_max = np.max(output)
+        neg_max = np.abs(np.min(output))
+        for v in range(0, self.N):
+            if output[v] > 0:
+                output[v] = output[v] / pos_max
+            else:
+                output[v] = output[v] / neg_max
+
         self.output = output
         self.assignments = (output > 0).astype(int)
 
         community_one_ratio = np.sum(self.assignments) / self.N
         print("Partitioned such that p={} in community 1".format(community_one_ratio))
+
+        prob_by_vertex = {}
+        
+        for vertex, index in self.vertex_to_index.items():
+            prob_by_vertex[vertex] = (self.output[index] + 1 ) / 2
+
+        return prob_by_vertex
 
 
     def draw_standard(self, custom_labels={}):
@@ -99,7 +114,8 @@ class Graph:
         G.add_nodes_from(self.vertex_to_index.keys())
         G.add_edges_from(self.edges_raw)
         plt.figure()
-        nx.draw_networkx(G, with_labels=False, node_size=10, node_color=node_color, width=0.1)
+        pos = nx.spring_layout(G)
+        nx.draw_networkx(G, pos=pos, with_labels=False, node_size=10, node_color=node_color, width=0.1)
         plt.show()
 
 
@@ -124,8 +140,13 @@ class Graph:
         
         if len(custom_labels) == 0:
             for index in self.vertex_to_index.values():
-                if self.assignments[index] == 1:
+                value = self.output[index]
+                if value > 0.5:
+                    colors.append("purple")
+                elif value > 0:
                     colors.append("blue")
+                elif value > -0.5:
+                    colors.append("orange")
                 else:
                     colors.append("red")
 

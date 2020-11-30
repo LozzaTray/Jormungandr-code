@@ -5,22 +5,20 @@ from model.graph import Graph
 
 
 def run():
-    num = 0
-    fb = FacebookGraph(num)
+    ego_id = 0 # 0 or 107
+    fb = FacebookGraph(ego_id)
     #fb.hypothesis_test_threeway(77)
     #fb.hypothesis_test_keyword("gender")
-    #fb.hypothesis_test_keyword("birthday")
-    #fb.hypothesis_test_keyword("first_name")
-    #fb.hypothesis_test_keyword("last_name")
-    #fb.hypothesis_test_keyword("hometown")
-    #fb.hypothesis_test_keyword("language") # not disjoint
-    nodes_by_gender = fb.get_node_has_feature_dict(77)
+
+    gender_index = 77 # 77 or 264
+    nodes_by_gender = fb.get_node_has_feature_dict(gender_index)
     graph = Graph(fb.edges)
-    graph.abp()
-    graph.proportions_in_each(nodes_by_gender)
-    graph.draw_partition(nodes_by_gender)
-    graph.draw_standard(nodes_by_gender)
-    graph.draw_standard()
+    community_probs = graph.abp()
+    #graph.proportions_in_each(nodes_by_gender)
+    #graph.draw_partition(nodes_by_gender)
+    #graph.draw_standard(nodes_by_gender)
+    #graph.draw_standard()
+    fb.gradient_ascent(community_probs)
 
 
 if __name__ == "__main__":
