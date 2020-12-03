@@ -4,7 +4,8 @@ from hypothesis.test_statistics import two_samples_mean_ll_ratio, students_z_tes
 from distributions.sigmoid import sigmoid
 import numpy as np
 from tqdm import tqdm
-
+import matplotlib.pyplot as plt
+from utils.colors import color_between
 
 curr_dir = os.path.dirname(__file__)
 facebook_dir = os.path.join(curr_dir, "facebook")
@@ -174,6 +175,7 @@ class FacebookGraph:
         print("p-values for (1: a2a v a2b ; 2: a2a v b2b ; 3: a2b v b2b):")
         print("p1 = {:.3e} , p2 = {:.3e} , p3 = {:.3e}".format(p1, p2, p3))
 
+
     def hypothesis_test_multi_group(self, feature_ids):
         """Is there evidence to suggest this feature affects how people interact"""
         print("Testing whether features: {}".format(feature_ids))
@@ -255,27 +257,49 @@ class FacebookGraph:
         return node_has_feature
 
 
-    def gradient_ascent(self, posterior_probs_dict):
+    def gradient_ascent(self, posterior_probs_dict, keywords=[]):
         print("Performing gradient ascent...")
-        X = -1 * np.ones((self.D + 1, self.N)) # initialise as all -1 and only turn +Ve set features
+
+        feat_ids_of_interest = []
+        feat_names_of_interest = []
+        
+        if len(keywords) == 0:
+            feat_ids_of_interest.extend(self.feature_names.keys())
+            feat_names_of_interest.extend(self.feature_names.values())
+        else:
+            for feature_id, feature_name in self.feature_names.items():
+                for keyword in keywords:
+                    if keyword in feature_name:
+                        feat_ids_of_interest.append(feature_id)
+                        feat_names_of_interest.append(feature_name)
+                        break
+        feat_names_of_interest.append("bias")
+        feat_names_of_interest = np.array(feat_names_of_interest)
+
+        D = len(feat_ids_of_interest) + 1
+        X = -1 * np.ones((D, self.N)) # initialise as all -1 and only turn +Ve set features
 
         node_id_arr = np.zeros(self.N)
         t = np.zeros((self.N, 1))
 
-        index = 0
+        node_index = 0
+        # build X matrix and T array
         for node_id, features in self.node_features.items():
-            node_id_arr[index] = node_id
-            t[index, 0] = posterior_probs_dict[node_id]
+            node_id_arr[node_index] = node_id
+            t[node_index, 0] = posterior_probs_dict[node_id]
 
-            for feature in features:
-                X[feature, index] = 1
+            for feat_index, feature_id in enumerate(feat_ids_of_interest):
+                if feature_id in features:
+                    X[feat_index, node_index] = 1
+
+            node_index += 1
 
         const = np.matmul(X, t - 1)
-        w = np.random.randn(self.D + 1, 1)
+        w = np.random.randn(D, 1)
 
         max_iters = 100
         alpha = 0.1
-        eta = 10
+        eta = 1
         rate = 0.95
 
         for i in tqdm(range(0, max_iters)):
@@ -284,7 +308,32 @@ class FacebookGraph:
             w = w + eta * (const + np.matmul(X, sXw) - alpha * w)
             eta = eta * rate
 
+        self.plot_space(t, feat_names_of_interest, X)
+        self.plot_performance(t - sXw, w, feat_names_of_interest)
         return w
 
 
-        
+    def plot_performance(self, error, w, feat_names):
+        root_mean_squared_error = np.sqrt(np.mean(np.square(error)))
+        print("rms error: {}".format(root_mean_squared_error))
+
+        sorted_weight_indices = np.argsort(np.abs(w[:,0]))
+        plt.figure()
+        plt.barh(feat_names[sorted_weight_indices], w[sorted_weight_indices, 0])
+        plt.show()
+
+
+    def plot_space(self, t, feat_names, X):
+        x = X[0, :]
+        y = X[1, :]
+        z = t[:, 0]
+
+        colors = [color_between(val) for val in z]
+
+        plt.figure()
+        plt.scatter(x, y, c=colors)
+        plt.xlabel(feat_names[0])
+        plt.ylabel(feat_names[1])
+        plt.title("Colour is prob in partition 1")
+        plt.show()
+

@@ -4,6 +4,7 @@ import math
 
 import networkx as nx
 import matplotlib.pyplot as plt
+from utils.colors import color_between
 
 
 class Graph:
@@ -141,14 +142,9 @@ class Graph:
         if len(custom_labels) == 0:
             for index in self.vertex_to_index.values():
                 value = self.output[index]
-                if value > 0.5:
-                    colors.append("purple")
-                elif value > 0:
-                    colors.append("blue")
-                elif value > -0.5:
-                    colors.append("orange")
-                else:
-                    colors.append("red")
+                prob = (value + 1) / 2
+                color = color_between(prob)
+                colors.append(color)
 
         else:
             for vertex in self.vertex_to_index.keys():

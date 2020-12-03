@@ -17,8 +17,8 @@ def run():
     #graph.proportions_in_each(nodes_by_gender)
     #graph.draw_partition(nodes_by_gender)
     #graph.draw_standard(nodes_by_gender)
-    #graph.draw_standard()
-    fb.gradient_ascent(community_probs)
+    graph.draw_standard()
+    fb.gradient_ascent(community_probs, ["language"])
 
 
 if __name__ == "__main__":
