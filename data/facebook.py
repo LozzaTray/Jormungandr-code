@@ -6,6 +6,10 @@ import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from utils.colors import color_between
+import pandas as pd
+from sklearn import linear_model
+from utils.plotting import sorted_bar_plot
+
 
 curr_dir = os.path.dirname(__file__)
 facebook_dir = os.path.join(curr_dir, "facebook")
@@ -55,7 +59,7 @@ class FacebookGraph:
     def read_feature_names(self):
         extension = ".featnames"
         delimiter = " "
-        feature_transform = lambda feature_row: (feature_row[0], "_".join(feature_row[1:]))
+        feature_transform = lambda feature_row: (feature_row[0], self.convert_feature_name("_".join(feature_row[1:])))
         features_arr = self.read_graph_file(extension, delimiter, feature_transform)
         return {int(feature[0]): feature[1] for feature in features_arr}
 
@@ -257,9 +261,7 @@ class FacebookGraph:
         return node_has_feature
 
 
-    def gradient_ascent(self, posterior_probs_dict, keywords=[]):
-        print("Performing gradient ascent...")
-
+    def get_feat_ids_and_names(self, keywords=[]):
         feat_ids_of_interest = []
         feat_names_of_interest = []
         
@@ -276,17 +278,26 @@ class FacebookGraph:
         feat_names_of_interest.append("bias")
         feat_names_of_interest = np.array(feat_names_of_interest)
 
+        return feat_ids_of_interest, feat_names_of_interest
+
+
+    def gradient_ascent(self, posterior_probs_dict, keywords=[]):
+        print("Performing gradient ascent...")
+
+        feat_ids_of_interest, feat_names_of_interest = self.get_feat_ids_and_names(keywords)
+
         D = len(feat_ids_of_interest) + 1
         X = -1 * np.ones((D, self.N)) # initialise as all -1 and only turn +Ve set features
 
         node_id_arr = np.zeros(self.N)
-        t = np.zeros((self.N, 1))
+        t = np.empty((self.N, 1))
 
         node_index = 0
         # build X matrix and T array
         for node_id, features in self.node_features.items():
             node_id_arr[node_index] = node_id
-            t[node_index, 0] = posterior_probs_dict[node_id]
+            prob = posterior_probs_dict[node_id]
+            t[node_index, 0] = 1 if prob > 0.5 else 0
 
             for feat_index, feature_id in enumerate(feat_ids_of_interest):
                 if feature_id in features:
@@ -308,19 +319,52 @@ class FacebookGraph:
             w = w + eta * (const + np.matmul(X, sXw) - alpha * w)
             eta = eta * rate
 
+        predictions = [1 if prob > 0.5 else 0 for prob in sXw[:, 0]]
         self.plot_space(t, feat_names_of_interest, X)
-        self.plot_performance(t - sXw, w, feat_names_of_interest)
+        self.plot_coeffs(w[:, 0], feat_names_of_interest)
         return w
 
 
-    def plot_performance(self, error, w, feat_names):
-        root_mean_squared_error = np.sqrt(np.mean(np.square(error)))
-        print("rms error: {}".format(root_mean_squared_error))
+    def linear_regression(self, posterior_probs_dict, keywords=[]):
+        print("Performing linear regression...")
 
-        sorted_weight_indices = np.argsort(np.abs(w[:,0]))
-        plt.figure()
-        plt.barh(feat_names[sorted_weight_indices], w[sorted_weight_indices, 0])
-        plt.show()
+        feat_ids_of_interest, feat_names_of_interest = self.get_feat_ids_and_names(keywords)
+
+        D = len(feat_ids_of_interest) + 1
+        X = -1 * np.ones((D, self.N)) # initialise as all -1 and only turn +Ve set features
+
+        node_id_arr = np.zeros(self.N)
+        t = np.empty((self.N, 1))
+
+        node_index = 0
+        # build X matrix and T array
+        for node_id, features in self.node_features.items():
+            node_id_arr[node_index] = node_id
+            prob = posterior_probs_dict[node_id]
+            t[node_index, 0] = prob
+
+            for feat_index, feature_id in enumerate(feat_ids_of_interest):
+                if feature_id in features:
+                    X[feat_index, node_index] = 1
+
+            node_index += 1
+
+        Xt = np.transpose(X)
+        regr = linear_model.LinearRegression(fit_intercept=False) # X already has constant term for bias
+        regr.fit(Xt, t)
+        r_squared = regr.score(Xt, t)
+        print("R^2 = {}".format(r_squared))
+        self.plot_features(X, feat_names_of_interest)
+        self.plot_coeffs(regr.coef_[0], feat_names_of_interest)
+
+
+    def plot_features(self, X, feat_names):
+        excess = np.sum(X, axis=1)
+        sorted_bar_plot(excess, feat_names, "Excess in community 1")
+
+
+    def plot_coeffs(self, weights, feat_names):
+        sorted_bar_plot(weights, feat_names, "Regression coefficient")
 
 
     def plot_space(self, t, feat_names, X):
@@ -336,4 +380,10 @@ class FacebookGraph:
         plt.ylabel(feat_names[1])
         plt.title("Colour is prob in partition 1")
         plt.show()
+
+
+    def convert_feature_name(self, feature_name):
+        pretty_name = feature_name.replace(";", "-")
+        pretty_name = pretty_name.replace("anonymized_feature_", "")
+        return pretty_name
 
