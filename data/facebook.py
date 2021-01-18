@@ -261,7 +261,7 @@ class FacebookGraph:
         return node_has_feature
 
 
-    def get_feat_ids_and_names(self, keywords=[]):
+    def get_feat_ids_and_names(self, keywords=[], bias=True):
         feat_ids_of_interest = []
         feat_names_of_interest = []
         
@@ -275,9 +275,9 @@ class FacebookGraph:
                         feat_ids_of_interest.append(feature_id)
                         feat_names_of_interest.append(feature_name)
                         break
-        feat_names_of_interest.append("bias")
+        if bias == True:
+            feat_names_of_interest.append("bias")
         feat_names_of_interest = np.array(feat_names_of_interest)
-
         return feat_ids_of_interest, feat_names_of_interest
 
 
@@ -325,23 +325,24 @@ class FacebookGraph:
         return w
 
 
-    def linear_regression(self, posterior_probs_dict, keywords=[]):
+    def linear_regression(self, output_dict, keywords=[]):
         print("Performing linear regression...")
 
         feat_ids_of_interest, feat_names_of_interest = self.get_feat_ids_and_names(keywords)
 
-        D = len(feat_ids_of_interest) + 1
-        X = -1 * np.ones((D, self.N)) # initialise as all -1 and only turn +Ve set features
+        D = len(feat_names_of_interest)
+        X = np.zeros((D, self.N)) # initialise as all -1 and only turn +Ve set features
+        X[-1, :] = np.ones(self.N)
 
         node_id_arr = np.zeros(self.N)
         t = np.empty((self.N, 1))
 
         node_index = 0
-        # build X matrix and T array
+        # build X matrix and t array
         for node_id, features in self.node_features.items():
             node_id_arr[node_index] = node_id
-            prob = posterior_probs_dict[node_id]
-            t[node_index, 0] = prob
+            output = output_dict[node_id]
+            t[node_index, 0] = output
 
             for feat_index, feature_id in enumerate(feat_ids_of_interest):
                 if feature_id in features:
@@ -354,17 +355,23 @@ class FacebookGraph:
         regr.fit(Xt, t)
         r_squared = regr.score(Xt, t)
         print("R^2 = {}".format(r_squared))
-        self.plot_features(X, feat_names_of_interest)
+        self.plot_features(X, feat_names_of_interest, t)
         self.plot_coeffs(regr.coef_[0], feat_names_of_interest)
 
 
-    def plot_features(self, X, feat_names):
-        excess = np.sum(X, axis=1)
-        sorted_bar_plot(excess, feat_names, "Excess in community 1")
+    def plot_features(self, X, feat_names, t):
+        feature_totals = np.sum(X, axis=1)
+        feature_totals_in_comunity_one = np.zeros_like(feature_totals)
+        for i in range(0, self.N):
+            if t[i, 0] > 0:
+                feature_totals_in_comunity_one[:] += X[:, i]
+
+        fraction_in_community_one = np.divide(feature_totals_in_comunity_one, feature_totals)
+        sorted_bar_plot(fraction_in_community_one, feat_names, "Community fractions", "Fraction of feature total in S")
 
 
     def plot_coeffs(self, weights, feat_names):
-        sorted_bar_plot(weights, feat_names, "Regression coefficient")
+        sorted_bar_plot(weights, feat_names, "Regression of $\\tilde{\sigma}_v$ on select features", "Regression coefficient")
 
 
     def plot_space(self, t, feat_names, X):

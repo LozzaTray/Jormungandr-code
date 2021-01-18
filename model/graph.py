@@ -48,7 +48,9 @@ class Graph:
         print("Initialised graph with N={} nodes and M={} edges".format(self.N, self.M))
 
 
-    def abp(self):
+    def abp(self, seed=None):
+        if seed is not None:
+            np.random.seed(seed)
         # implement for r = 3
         r = 3
         T = math.floor(math.log2(self.N)) # num_iters - r
@@ -100,12 +102,12 @@ class Graph:
         community_one_ratio = np.sum(self.assignments) / self.N
         print("Partitioned such that p={} in community 1".format(community_one_ratio))
 
-        prob_by_vertex = {}
+        output_by_vertex = {}
         
         for vertex, index in self.vertex_to_index.items():
-            prob_by_vertex[vertex] = (self.output[index] + 1 ) / 2
+            output_by_vertex[vertex] = self.output[index]
 
-        return prob_by_vertex
+        return output_by_vertex
 
 
     def draw_standard(self, custom_labels={}, title="", feature=""):
@@ -122,13 +124,17 @@ class Graph:
         if len(feature) != 0:
             plt.scatter([],[], c="purple", label=feature + ' on')
             plt.scatter([], [], c="orange", label=feature + ' off')
+        else:
+            plt.scatter([], [], c=color_between(0), label="$\hat{X}_v$ = 1")
+            plt.scatter([], [], c=color_between(0.5), label="Midpoint")
+            plt.scatter([], [], c=color_between(1), label="$\hat{X}_v = 2$")
 
         plt.legend()
         plt.show()
 
 
 
-    def draw_partition(self, custom_labels={}):
+    def draw_partition(self, custom_labels={}, title={}, feature=""):
         node_color = self.build_color_arr(custom_labels)
 
         node_pos = self.gen_layout()
@@ -139,7 +145,18 @@ class Graph:
         plt.figure(figsize=(7,4))
         nx.draw_networkx(G, pos=node_pos, with_labels=False, node_size=10, node_color=node_color, width=0.1)
         plt.xlim(-7, 7)
-        plt.ylim(-4, 4) 
+        plt.ylim(-4, 4)
+
+        if len(feature) != 0:
+            plt.scatter([],[], c="purple", label=feature + ' on')
+            plt.scatter([], [], c="orange", label=feature + ' off')
+        else:
+            plt.scatter([], [], c=color_between(0), label="$\hat{X}_v$ = 1")
+            plt.scatter([], [], c=color_between(0.5), label="Midpoint")
+            plt.scatter([], [], c=color_between(1), label="$\hat{X}_v = 2$")
+
+        plt.title(title)
+        plt.legend()
         plt.show()
 
 
