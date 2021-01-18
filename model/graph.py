@@ -108,7 +108,7 @@ class Graph:
         return prob_by_vertex
 
 
-    def draw_standard(self, custom_labels={}):
+    def draw_standard(self, custom_labels={}, title="", feature=""):
         node_color = self.build_color_arr(custom_labels)
 
         G = nx.Graph()
@@ -117,6 +117,13 @@ class Graph:
         plt.figure()
         pos = nx.spring_layout(G)
         nx.draw_networkx(G, pos=pos, with_labels=False, node_size=10, node_color=node_color, width=0.1)
+        plt.title(title)
+
+        if len(feature) != 0:
+            plt.scatter([],[], c="purple", label=feature + ' on')
+            plt.scatter([], [], c="orange", label=feature + ' off')
+
+        plt.legend()
         plt.show()
 
 
