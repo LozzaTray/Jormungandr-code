@@ -125,9 +125,9 @@ class Graph:
             plt.scatter([],[], c="purple", label=feature + ' on')
             plt.scatter([], [], c="orange", label=feature + ' off')
         else:
-            plt.scatter([], [], c=color_between(0), label="$\hat{X}_v$ = 1")
+            plt.scatter([], [], c=color_between(0), label=r"$\hat{X}_v$ = 1")
             plt.scatter([], [], c=color_between(0.5), label="Midpoint")
-            plt.scatter([], [], c=color_between(1), label="$\hat{X}_v = 2$")
+            plt.scatter([], [], c=color_between(1), label=r"$\hat{X}_v = 2$")
 
         plt.legend()
         plt.show()
@@ -151,9 +151,9 @@ class Graph:
             plt.scatter([],[], c="purple", label=feature + ' on')
             plt.scatter([], [], c="orange", label=feature + ' off')
         else:
-            plt.scatter([], [], c=color_between(0), label="$\hat{X}_v$ = 1")
+            plt.scatter([], [], c=color_between(0), label=r"$\hat{X}_v$ = 1")
             plt.scatter([], [], c=color_between(0.5), label="Midpoint")
-            plt.scatter([], [], c=color_between(1), label="$\hat{X}_v = 2$")
+            plt.scatter([], [], c=color_between(1), label=r"$\hat{X}_v = 2$")
 
         plt.title(title)
         plt.legend()
@@ -203,7 +203,6 @@ class Graph:
 
         print("[i, j] is # in detected community i of custom label j")
         print(assigned_by_custom)
-
 
 
 
