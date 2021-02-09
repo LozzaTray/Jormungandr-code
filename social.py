@@ -2,9 +2,10 @@ from data.facebook import FacebookGraph
 from typing import List
 from hypothesis.test_statistics import two_samples_mean_ll_ratio, students_z_test
 from model.graph import Graph
+from model.graph_mcmc import Graph_MCMC
 
 
-def run():
+def standard():
     ego_id = 0 # 0 or 107
     gender_index = 77 # 77 or 264
     fb = FacebookGraph(ego_id)
@@ -23,7 +24,15 @@ def run():
     fb.linear_regression(community_output, ["gender", "language"])
     #fb.linear_regression(community_output)
 
+    
+def mcmc():
+    ego_id = 0 # 0 or 107
+    fb = FacebookGraph(ego_id)
+
+    graph = Graph_MCMC(fb.edges)
+    graph.draw()
+
 
 if __name__ == "__main__":
     print("Analysing facebook data")
-    run()
+    mcmc()
