@@ -28,9 +28,12 @@ def standard():
 def mcmc():
     ego_id = 0 # 0 or 107
     fb = FacebookGraph(ego_id)
+    int_edges = [ (int(edge[0]), int(edge[1])) for edge in fb.edges]
 
-    graph = Graph_MCMC(fb.edges)
-    graph.draw()
+    graph = Graph_MCMC(int_edges)
+    graph.partition(B_min=5, B_max=10)
+    graph.draw("partition.png")
+    graph.plot_matrix()
 
 
 if __name__ == "__main__":
