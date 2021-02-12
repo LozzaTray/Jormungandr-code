@@ -1,8 +1,9 @@
-import networkx as nx
+import numpy as np
 from graph_tool import Graph as GT_Graph
 from graph_tool.all import graph_draw
 from graph_tool.inference import minimize_blockmodel_dl
 import matplotlib.pyplot as plt
+from graph_tool.all import BlockState
 ## version focal seems to be winner
 
 
@@ -26,13 +27,25 @@ class Graph_MCMC:
 
         print("Initialised graph with N={} nodes and M={} edges".format(self.N, self.M))
 
-    
+
+    def get_vertex_list(self):
+        return self.G.get_vertices()
+
+
+    def add_property(self, name, value_type, value_sequence):
+        vertex_prop = self.G.new_vertex_property(value_type, value_sequence)
+        self.G.vertex_properties[name] = vertex_prop # add to graph
+
+
     def partition(self, B_min=None, B_max=None, degree_corrected=True):
-        """Performs MCMC algorithm to minimise description length (DL)"""
+        """
+        Performs MCMC algorithm to minimise description length (DL)
+        returns partition array
+        """
         print("Performing inference...")
         self.state = minimize_blockmodel_dl(self.G, B_min=B_min, B_max=B_max, deg_corr=degree_corrected, verbose=True)
         print("Done")
-        return self.state.entropy()
+        return self.state.get_blocks()
 
 
     def draw(self, output=None):
@@ -55,6 +68,46 @@ class Graph_MCMC:
             plt.show()
         else:
             print("No state partition detected >> cannot draw matrix")
+
+    
+    def plot_community_property_fractions(self):
+        if self.state is not None:
+            properties = self.G.vertex_properties
+            num_properties = len(properties)
+
+            blocks = self.state.get_blocks()
+            B = self.state.get_B()
+            vertices = self.G.get_vertices()
+            block_counts = np.zeros(B)
+
+            for v in vertices:
+                block_index = blocks[v]
+                block_counts[block_index] += 1
+
+            width = 0.8 / num_properties
+            idx = 0
+
+            for prop_name, value_map in properties.items():
+                prop_counts = np.zeros(B)
+
+                for v in vertices:
+                    block_index = blocks[v]
+
+                    if value_map[v]:
+                        prop_counts[block_index] += 1
+
+                prop_fractions = np.divide(prop_counts, block_counts)
+                x = np.array(range(0, B)) + (width * idx)
+                plt.bar(x, prop_fractions, width=width, label=prop_name)
+                idx += 1
+            
+            plt.title("Community fractions in detected blocks")
+            plt.xlabel("Inferred block")
+            plt.ylabel("Fraction of vertices with given feature")
+            plt.legend()
+            plt.show()
+        else:
+            print("No state partition detected >> cannot draw prop fractions")
 
 
     def gen_output_path(self, filename):

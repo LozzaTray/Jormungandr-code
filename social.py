@@ -31,9 +31,19 @@ def mcmc():
     int_edges = [ (int(edge[0]), int(edge[1])) for edge in fb.edges]
 
     graph = Graph_MCMC(int_edges)
+    vertices = graph.get_vertex_list()
+    
+    selected_feat_ids = [77, 78]
+
+    for feat_id in selected_feat_ids:
+        feature_name = fb.feature_name(feat_id)
+        feature_flags = [fb.node_has_feature(str(vertex), feat_id) for vertex in vertices]
+        graph.add_property(feature_name, "bool", feature_flags)
+
     graph.partition(B_min=5, B_max=10)
     graph.draw("partition.png")
     graph.plot_matrix()
+    graph.plot_community_property_fractions()
 
 
 if __name__ == "__main__":

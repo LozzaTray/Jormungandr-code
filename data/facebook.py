@@ -97,6 +97,15 @@ class FacebookGraph:
                 return True
         return False
 
+    
+    def node_has_feature(self, node_id, feature_id):
+        node_feature_list = self.node_features.get(node_id)
+        return feature_id in node_feature_list
+
+
+    def feature_name(self, feature_id):
+        return self.feature_names.get(feature_id)
+
 
     def hypothesis_test_single(self, feature_id):
         """Is there evidence to suggest this feature affects how people interact"""
