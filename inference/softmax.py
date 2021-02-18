@@ -93,7 +93,7 @@ class SoftmaxNeuralNet:
         return derivatives
 
 
-    def fit(self, X, Y, learning_rate=0.01, n_iterations=2500, seed=None):
+    def fit(self, X, Y, learning_rate=0.01, n_iterations=2500, seed=None, verbose=False):
         """
         Train params of Neural Net:
             X : (n, d) array - where n is num training points and d is dimension (num features)
@@ -147,6 +147,31 @@ class SoftmaxNeuralNet:
         plt.plot(np.arange(len(self.costs)), self.costs)
         plt.xlabel("epochs")
         plt.ylabel("cost")
+        plt.show()
+
+    
+    def plot_final_weights(self, feature_names):
+        W = self.parameters["W" + str(self.L)]
+
+        B = W.shape[0]
+        D = W.shape[1]        
+
+        assert len(feature_names) == D
+
+        width = 0.8 / D
+
+        for d in range(0, D):
+            y = []
+            for b in range(0, B):
+                y.append(W[b, d])
+
+            x = np.array(range(0, B)) + (width * d)
+            plt.bar(x, y, width=width, label=feature_names[d])
+        
+        plt.title("Softmax weightings")
+        plt.xlabel("Class label")
+        plt.ylabel("Weight")
+        plt.legend()
         plt.show()
 
 

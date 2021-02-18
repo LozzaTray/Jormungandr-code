@@ -84,19 +84,20 @@ class Graph_MCMC:
 
             X = np.empty((N, D))
 
-            for prop_index, (prop_name, value_map) in enumerate(properties.items()):
+            for prop_index, value_map in enumerate(properties.values()):
                 for vertex_index, vertex_id in enumerate(vertices):
                     X[vertex_index, prop_index] = value_map[vertex_id]
 
             blocks = self.state.get_blocks() # dictionary: vertex -> block_index
             Y = np.empty(N)
 
-            for vertex_index, vertex in enumerate(vertices):
+            for vertex_index, vertex_id in enumerate(vertices):
                 Y[vertex_index] = blocks[vertex_id]
 
             classifier = SoftmaxNeuralNet(layers_size=[B])
             classifier.fit(X, Y)
 
+            classifier.plot_final_weights(list(properties.keys()))
             classifier.plot_cost()
 
     

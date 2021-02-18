@@ -33,14 +33,14 @@ def mcmc():
     graph = Graph_MCMC(int_edges)
     vertices = graph.get_vertex_list()
     
-    selected_feat_ids = [77, 78, 79, 80]
+    selected_feat_ids, __ = fb.get_feat_ids_and_names(keywords=["gender", "language"])
 
     for feat_id in selected_feat_ids:
         feature_name = fb.feature_name(feat_id)
         feature_flags = [fb.node_has_feature(str(vertex), feat_id) for vertex in vertices]
         graph.add_property(feature_name, "bool", feature_flags)
 
-    graph.partition(B_min=5, B_max=10)
+    graph.partition(B_min=2, B_max=5)
     #graph.draw("partition.png")
     #graph.plot_matrix()
     #graph.plot_community_property_fractions()
