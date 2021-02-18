@@ -4,6 +4,7 @@ from graph_tool.all import graph_draw
 from graph_tool.inference import minimize_blockmodel_dl
 import matplotlib.pyplot as plt
 from graph_tool.all import BlockState
+from inference.softmax import SoftmaxNeuralNet
 ## version focal seems to be winner
 
 
@@ -68,6 +69,35 @@ class Graph_MCMC:
             plt.show()
         else:
             print("No state partition detected >> cannot draw matrix")
+
+    
+    def train_feature_classifier(self):
+        if self.state is None:
+            print("No state partition detected >> ABORT")
+        else:
+            properties = self.G.vertex_properties
+            D = len(properties)
+
+            B = self.state.get_B()
+            vertices = self.G.get_vertices()
+            N = len(vertices)
+
+            X = np.empty((N, D))
+
+            for prop_index, (prop_name, value_map) in enumerate(properties.items()):
+                for vertex_index, vertex_id in enumerate(vertices):
+                    X[vertex_index, prop_index] = value_map[vertex_id]
+
+            blocks = self.state.get_blocks() # dictionary: vertex -> block_index
+            Y = np.empty(N)
+
+            for vertex_index, vertex in enumerate(vertices):
+                Y[vertex_index] = blocks[vertex_id]
+
+            classifier = SoftmaxNeuralNet(layers_size=[B])
+            classifier.fit(X, Y)
+
+            classifier.plot_cost()
 
     
     def plot_community_property_fractions(self):
