@@ -23,23 +23,9 @@ class SBM:
             new_block_labels = [idx] * num_in_block # repeats num_in_block times [idx, idx .... idx]
             vertex_block_labels.extend(new_block_labels)
 
-        # must translate from W to e_rs
-        edges_between_blocks = np.zeros_like(W)
+        out_fugacities = [1] * n
 
-        for r in range(0, B):
-            for s in range(r, B):
-                nr = num_vertices_by_block[r]
-                ns = num_vertices_by_block[s]
-                num_edges_possible = nr * ns
-
-                if r == s:
-                    num_edges_possible = nr * (nr-1) / 2
-                
-                num_edges_expected = num_edges_possible * W[r, s]
-                edges_between_blocks[r, s] = num_edges_expected
-                edges_between_blocks[r, s] = num_edges_expected
-
-        self.graph = generate_sbm(vertex_block_labels, edges_between_blocks)
+        self.graph = generate_maxent_sbm(vertex_block_labels, W, out_fugacities)
 
     
     def partition(self, B_min=None, B_max=None, degree_corrected=True):
@@ -64,10 +50,10 @@ class SBM:
 
 if __name__ == "__main__":
     n = 1000
-    B = 5
-    prior = [0.1, 0.15, 0.2, 0.25, 0.3]
-    W = (9 * np.identity(B) + 1 * np.ones((B, B))) / 100
+    B = 3
+    prior = [0.33, 0.33, 0.34]
+    W = (9 * np.identity(B) + 1 * np.ones((B, B))) / 200
 
     sbm = SBM(n, B, prior, W)
-    sbm.partition()
-    sbm.draw()
+    sbm.partition(3, 7)
+    sbm.draw("generated.png")
