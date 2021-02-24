@@ -27,7 +27,6 @@ class SoftmaxNeuralNet:
 
 
     def _initialize_parameters(self):
-        np.random.seed(1)
 
         for l in range(1, len(self.layers_size)):
             self.parameters["W" + str(l)] = np.random.randn(self.layers_size[l], self.layers_size[l - 1]) / np.sqrt(
@@ -64,7 +63,7 @@ class SoftmaxNeuralNet:
         return s * (1 - s)
 
 
-    def _backward(self, X, Y, store):
+    def _backward_cross_entropy_loss(self, X, Y, store):
 
         derivatives = {}
 
@@ -91,6 +90,22 @@ class SoftmaxNeuralNet:
             derivatives["db" + str(l)] = db
 
         return derivatives
+
+    
+    def _backward_log_posterior(self, X, Y, store):
+        raise NotImplementedError()
+
+
+    def sgld_initialisation(self):
+        """Initilaise SGLD - Stochastic Gradient Langevin Diffusion for MCMC sampling form posterior"""
+        self._initialize_parameters()
+
+    
+    def sgld_iteration(self, step_size, X, Y):
+        """Perform one iteration of sgld"""
+        A, store = self._forward(X)
+        cost = -np.mean(Y * np.log(A.T + 1e-8))
+
 
 
     def fit(self, X, Y, learning_rate=0.01, n_iterations=2500, seed=None, verbose=False):
@@ -119,7 +134,7 @@ class SoftmaxNeuralNet:
         for loop in range(n_iterations):
             A, store = self._forward(X)
             cost = -np.mean(Y * np.log(A.T + 1e-8))
-            derivatives = self._backward(X, Y, store)
+            derivatives = self._backward_cross_entropy_loss(X, Y, store)
 
             for l in range(1, self.L + 1):
                 self.parameters["W" + str(l)] = self.parameters["W" + str(l)] - learning_rate * derivatives[
