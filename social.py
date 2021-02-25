@@ -44,7 +44,8 @@ def mcmc():
     #graph.draw("partition.png")
     #graph.plot_matrix()
     #graph.plot_community_property_fractions()
-    graph.train_feature_classifier()
+    graph.mcmc()
+    #graph.train_feature_classifier()
 
 
 if __name__ == "__main__":

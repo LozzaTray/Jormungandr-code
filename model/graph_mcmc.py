@@ -1,9 +1,8 @@
 import numpy as np
 from graph_tool import Graph as GT_Graph
-from graph_tool.all import graph_draw
+from graph_tool.all import graph_draw, BlockState, mcmc_equilibrate, PartitionModeState
 from graph_tool.inference import minimize_blockmodel_dl
 import matplotlib.pyplot as plt
-from graph_tool.all import BlockState
 from inference.softmax import SoftmaxNeuralNet
 ## version focal seems to be winner
 
@@ -25,6 +24,7 @@ class Graph_MCMC:
         
         # initialise empty state
         self.state = None
+        self.vertex_marginals = None
 
         print("Initialised graph with N={} nodes and M={} edges".format(N, M))
 
@@ -54,15 +54,36 @@ class Graph_MCMC:
         print("Done")
         return self.state.get_blocks()
 
+    
+    def mcmc(self):
+        bs = [] # collect some partitions
+
+        def collect_partitions(s):
+            bs.append(s.b.a.copy())
+
+        mcmc_equilibrate(self.state, force_niter=1000, callback=collect_partitions, verbose=True)
+
+        # Disambiguate partitions and obtain marginals
+        pmode = PartitionModeState(bs, converge=True)
+        pv = pmode.get_marginal(self.G)
+
+        # Now the node marginals are stored in property map pv. We can
+        # visualize them as pie charts on the nodes:
+        self.vertex_marginals = pv
+        
 
     def draw(self, output=None):
-        output = self.gen_output_path(output)
+        output = self.gen_output_path(output)            
         if self.state is not None:
-            print("Drawing state partition")
-            self.state.draw(output=output)
+            if self.vertex_marginals is not None:
+                print("Drawing soft partition")
+                self.state.draw(vertex_shape="pie", vertex_pie_fractions=self.vertex_marginals, output=output)
+            else:
+                print("Drawing hard state partition")
+                self.state.draw(output=output)
         else:
             print("No state partition detected >> draw default graph")
-            graph_draw(self.G, vertex_text=self.G.vertex_index, output=output)
+            graph_draw(self.G, output=output)
 
     
     def plot_matrix(self):
