@@ -103,8 +103,8 @@ class SoftmaxNeuralNet:
     
     def sgld_iteration(self, step_size, X, Y):
         """Perform one iteration of sgld"""
-        A, store = self._forward(X)
-        cost = -np.mean(Y * np.log(A.T + 1e-8))
+        A, _store = self._forward(X)
+        _cost = -np.mean(Y * np.log(A.T + 1e-8))
 
 
 

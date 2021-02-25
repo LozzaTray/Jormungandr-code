@@ -17,8 +17,8 @@ class Graph_MCMC:
         vertex_set = origin_vertices.union(destin_vertices)
         
         # constants
-        self.N = len(vertex_set)
-        self.M = len(edges)
+        N = len(vertex_set)
+        M = len(edges)
 
         self.G = GT_Graph(directed=False)
         self.G.add_edge_list(edges)
@@ -26,7 +26,13 @@ class Graph_MCMC:
         # initialise empty state
         self.state = None
 
-        print("Initialised graph with N={} nodes and M={} edges".format(self.N, self.M))
+        print("Initialised graph with N={} nodes and M={} edges".format(N, M))
+
+    
+    def read_from_file(self, filename):
+        filename = self.gen_output_path(filename)
+        self.G = GT_Graph(directed=False)
+        self.G.load(filename)
 
 
     def get_vertex_list(self):
