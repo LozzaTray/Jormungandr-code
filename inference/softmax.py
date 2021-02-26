@@ -93,19 +93,34 @@ class SoftmaxNeuralNet:
 
     
     def _backward_log_posterior(self, X, Y, store):
-        raise NotImplementedError()
+        log_lik_derivatives = self._backward_cross_entropy_loss(X, Y, store)
+        # log_prior_derivatives = TODO: implement log_prior
+        # return log_lik_derivatives + log_prior_derivatives # will need for logic to join
+        return log_lik_derivatives
 
 
-    def sgld_initialisation(self):
+    def sgld_initialise(self, input_dimension):
         """Initilaise SGLD - Stochastic Gradient Langevin Diffusion for MCMC sampling form posterior"""
+        self.layers_size.insert(0, input_dimension)
         self._initialize_parameters()
 
     
-    def sgld_iteration(self, step_size, X, Y):
+    def sgld_iterate(self, step_size, X, Y):
         """Perform one iteration of sgld"""
-        A, _store = self._forward(X)
-        _cost = -np.mean(Y * np.log(A.T + 1e-8))
+        A, store = self._forward(X)
+        cost = -np.mean(Y * np.log(A.T + 1e-8))
+        derivatives = self._backward_log_posterior(X, Y, store)
 
+        for l in range(1, self.L + 1):
+            weight_shape = self.parameters["W" + str(l)].shape
+            weight_noise = np.sqrt(step_size) * np.random.randn(*weight_shape) # * unpacks tuple into arg list
+            self.parameters["W" + str(l)] = self.parameters["W" + str(l)] - step_size * derivatives["dW" + str(l)] / 2 + weight_noise
+
+            bias_shape = self.parameters["b" + str(l)].shape
+            bias_noise = np.sqrt(step_size) * np.random.randn(*bias_shape)
+            self.parameters["b" + str(l)] = self.parameters["b" + str(l)] - step_size * derivatives["db" + str(l)] / 2 + bias_noise
+
+        return cost
 
 
     def fit(self, X, Y, learning_rate=0.01, n_iterations=2500, seed=None, verbose=False):
@@ -117,7 +132,7 @@ class SoftmaxNeuralNet:
             n_iterations - num iterations
         """
         if len(self.costs) > 0:
-            print("Classifier already traiend must create new instance >> ABORTING")
+            print("Classifier already trained must create new instance >> ABORTING")
             return
 
         if seed is not None:

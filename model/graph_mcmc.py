@@ -3,7 +3,7 @@ from graph_tool import Graph as GT_Graph
 from graph_tool.all import graph_draw, BlockState, mcmc_equilibrate, PartitionModeState
 from graph_tool.inference import minimize_blockmodel_dl
 import matplotlib.pyplot as plt
-from inference.softmax import SoftmaxNeuralNet
+from inference.softmax import SoftmaxNeuralNet, from_values_to_one_hot
 ## version focal seems to be winner
 
 
@@ -70,6 +70,39 @@ class Graph_MCMC:
         # Now the node marginals are stored in property map pv. We can
         # visualize them as pie charts on the nodes:
         self.vertex_marginals = pv
+
+    
+    def sample_classifier_mcmc(self):
+        if self.state is None:
+            print("No state partition detected >> ABORT")
+        else:
+            properties = self.G.vertex_properties
+            D = len(properties)
+
+            B = self.state.get_B()
+            vertices = self.G.get_vertices()
+            N = len(vertices)
+
+            X = np.empty((N, D))
+
+            for prop_index, value_map in enumerate(properties.values()):
+                for vertex_index, vertex_id in enumerate(vertices):
+                    X[vertex_index, prop_index] = value_map[vertex_id]
+
+            blocks = self.state.get_blocks() # dictionary: vertex -> block_index
+            Y = np.empty(N)
+
+            for vertex_index, vertex_id in enumerate(vertices):
+                Y[vertex_index] = blocks[vertex_id]
+
+            Y = from_values_to_one_hot(Y)
+
+            classifier = SoftmaxNeuralNet(layers_size=[B])
+            for n in range(0, 100):
+                classifier.sgld_initialise(D)
+                classifier.sgld_iterate(1, X, Y)
+                if n % 10 == 0:
+                    classifier.plot_final_weights(list(properties.keys()))
         
 
     def draw(self, output=None):

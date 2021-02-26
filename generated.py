@@ -6,10 +6,9 @@ def run():
     graph.read_from_file("generated.gml")
 
     graph.partition(B_min=2, B_max=5)
-    graph.draw("auto-gen.png")
-    graph.plot_matrix()
-    graph.plot_community_property_fractions()
-    graph.train_feature_classifier()
+    #graph.mcmc()
+    #graph.draw("auto-gen.png")
+    graph.sample_classifier_mcmc()
 
 
 if __name__ == "__main__":
