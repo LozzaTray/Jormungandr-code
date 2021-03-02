@@ -89,20 +89,23 @@ class Graph_MCMC:
                 for vertex_index, vertex_id in enumerate(vertices):
                     X[vertex_index, prop_index] = value_map[vertex_id]
 
-            blocks = self.state.get_blocks() # dictionary: vertex -> block_index
-            Y = np.empty(N)
-
-            for vertex_index, vertex_id in enumerate(vertices):
-                Y[vertex_index] = blocks[vertex_id]
-
-            Y = from_values_to_one_hot(Y)
-
             classifier = SoftmaxNeuralNet(layers_size=[B])
-            for n in range(0, 100):
-                classifier.sgld_initialise(D)
-                classifier.sgld_iterate(1, X, Y)
-                if n % 10 == 0:
-                    classifier.plot_final_weights(list(properties.keys()))
+
+            def sgld_iterate(state):
+                blocks = state.b.a.copy()
+                Y = np.empty(N)
+
+                for vertex_index, vertex_id in enumerate(vertices):
+                    Y[vertex_index] = blocks[vertex_id]
+
+                Y = from_values_to_one_hot(Y)
+                classifier.sgld_iterate(step_size=0.1, X=X, Y=Y)
+
+            classifier.sgld_initialise(D)
+
+            mcmc_equilibrate(self.state, force_niter=100, callback=sgld_iterate, verbose=True)
+            classifier.plot_final_weights(list(properties.keys()))
+
         
 
     def draw(self, output=None):
