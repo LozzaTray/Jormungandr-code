@@ -228,6 +228,44 @@ class SoftmaxNeuralNet:
         plt.show()
 
 
+    def plot_sampled_weights(self, feature_names):
+        W_history = self.weight_history["W" + str(self.L)]
+
+        B = W_history[0].shape[0]
+        D = W_history[0].shape[1]
+        n = len(W_history)       
+
+        assert len(feature_names) == D
+
+        width = 0.8 / D
+
+        for d in range(0, D):
+            mean = np.zeros(B)
+            square = np.zeros(B)
+            
+            for W in W_history:
+                mean[:] += W[:, d]
+                square[:] += W[:, d] ** 2
+
+            mean = mean / n
+            square = square / n
+
+            std_dev = np.sqrt(square - mean ** 2)
+
+            height = 2 * std_dev
+            bottom = mean - std_dev
+
+            x = np.array(range(0, B)) + (width * d)
+            plt.bar(x=x, height=height, bottom=bottom, width=width, label=feature_names[d])
+        
+        plt.title("Softmax weightings")
+        plt.xlabel("Class label")
+        plt.ylabel("Weight mean $\pm \sigma$")
+        plt.grid()
+        plt.legend()
+        plt.show()
+
+
 def from_values_to_one_hot(y):
     y = np.array(y)
     enc = OneHotEncoder(sparse=False, categories='auto')

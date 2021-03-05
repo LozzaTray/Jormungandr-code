@@ -105,7 +105,7 @@ class Graph_MCMC:
 
             # mcmc_equilibrate(self.state, force_niter=num_iter, callback=sgld_iterate, verbose=verbose)
             for i in range(0, num_iter):
-                dS, nattempts, nmoves = self.state.multiflip_mcmc_sweep(niter=1)
+                dS, nattempts, nmoves = self.state.multiflip_mcmc_sweep(niter=1, d=1.0) # d is prob of selecting new empty group
                 sgld_iterate(self.state)
                 if verbose and i % 10 == 0:
                     print("i: {}, dS: {}, nattempts: {}, nmoves: {}".format(i, dS, nattempts, nmoves))

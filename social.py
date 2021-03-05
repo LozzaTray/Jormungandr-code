@@ -33,7 +33,7 @@ def mcmc():
     graph = Graph_MCMC(int_edges)
     vertices = graph.get_vertex_list()
     
-    selected_feat_ids, __ = fb.get_feat_ids_and_names(keywords=["gender", "language"])
+    selected_feat_ids, selected_feat_names = fb.get_feat_ids_and_names(keywords=["gender", "language"])
 
     for feat_id in selected_feat_ids:
         feature_name = fb.feature_name(feat_id)
@@ -44,7 +44,9 @@ def mcmc():
     #graph.draw("partition.png")
     #graph.plot_matrix()
     #graph.plot_community_property_fractions()
-    graph.mcmc()
+    classifier = graph.sample_classifier_mcmc(100, verbose=True)
+    classifier.plot_sampled_weights(selected_feat_names)
+    #graph.mcmc()
     #graph.train_feature_classifier()
 
 
