@@ -103,6 +103,12 @@ class SoftmaxNeuralNet:
         """Initilaise SGLD - Stochastic Gradient Langevin Diffusion for MCMC sampling form posterior"""
         self.layers_size.insert(0, input_dimension)
         self._initialize_parameters()
+        self.weight_history = {}
+        self.bias_history = {}
+
+        for l in range(1, len(self.layers_size)):
+            self.weight_history["W" + str(l)] = []
+            self.bias_history["b" + str(l)] = []
 
     
     def sgld_iterate(self, step_size, X, Y):
@@ -113,14 +119,21 @@ class SoftmaxNeuralNet:
         cost = -np.mean(Y * np.log(A.T + 1e-8))
         derivatives = self._backward_log_posterior(X, Y, store)
 
+
         for l in range(1, self.L + 1):
             weight_shape = self.parameters["W" + str(l)].shape
             weight_noise = np.sqrt(step_size) * np.random.randn(*weight_shape) # * unpacks tuple into arg list
-            self.parameters["W" + str(l)] = self.parameters["W" + str(l)] - step_size * derivatives["dW" + str(l)] / 2 + weight_noise
+            new_weight = self.parameters["W" + str(l)] - step_size * derivatives["dW" + str(l)] / 2 + weight_noise
+
+            self.parameters["W" + str(l)] = new_weight
+            self.weight_history["W" + str(l)].append(new_weight)
 
             bias_shape = self.parameters["b" + str(l)].shape
             bias_noise = np.sqrt(step_size) * np.random.randn(*bias_shape)
-            self.parameters["b" + str(l)] = self.parameters["b" + str(l)] - step_size * derivatives["db" + str(l)] / 2 + bias_noise
+            new_bias = self.parameters["b" + str(l)] - step_size * derivatives["db" + str(l)] / 2 + bias_noise
+
+            self.parameters["b" + str(l)] = new_bias
+            self.bias_history["b" + str(l)].append(new_bias)
 
         return cost
 

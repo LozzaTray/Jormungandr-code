@@ -99,12 +99,12 @@ class Graph_MCMC:
                     Y[vertex_index] = blocks[vertex_id]
 
                 Y = from_values_to_one_hot(Y)
-                classifier.sgld_iterate(step_size=0.1, X=X, Y=Y)
+                classifier.sgld_iterate(step_size=0.01, X=X, Y=Y)
 
             classifier.sgld_initialise(D)
 
             mcmc_equilibrate(self.state, force_niter=100, callback=sgld_iterate, verbose=True)
-            classifier.plot_final_weights(list(properties.keys()))
+            return classifier
 
         
 
