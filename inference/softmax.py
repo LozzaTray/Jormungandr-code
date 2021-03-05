@@ -3,6 +3,8 @@
 import numpy as np
 import matplotlib.pylab as plt
 from sklearn.preprocessing import OneHotEncoder
+import tensorflow as tf
+import pysgmcmc as pg
 
 
 class SoftmaxNeuralNet:
@@ -109,6 +111,12 @@ class SoftmaxNeuralNet:
         for l in range(1, len(self.layers_size)):
             self.weight_history["W" + str(l)] = []
             self.bias_history["b" + str(l)] = []
+
+    
+    def cross_entropy_loss(self, X, Y):
+        A, _store = self._forward(X)
+        cost = -np.mean(Y * np.log(A.T + 1e-8))
+        return cost
 
     
     def sgld_iterate(self, step_size, X, Y):

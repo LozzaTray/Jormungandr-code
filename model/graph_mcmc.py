@@ -72,7 +72,7 @@ class Graph_MCMC:
         self.vertex_marginals = pv
 
     
-    def sample_classifier_mcmc(self):
+    def sample_classifier_mcmc(self, num_iter, verbose=False):
         if self.state is None:
             print("No state partition detected >> ABORT")
         else:
@@ -92,7 +92,7 @@ class Graph_MCMC:
             classifier = SoftmaxNeuralNet(layers_size=[B])
 
             def sgld_iterate(state):
-                blocks = state.b.a.copy()
+                blocks = state.get_blocks()
                 Y = np.empty(N)
 
                 for vertex_index, vertex_id in enumerate(vertices):
@@ -103,7 +103,13 @@ class Graph_MCMC:
 
             classifier.sgld_initialise(D)
 
-            mcmc_equilibrate(self.state, force_niter=100, callback=sgld_iterate, verbose=True)
+            # mcmc_equilibrate(self.state, force_niter=num_iter, callback=sgld_iterate, verbose=verbose)
+            for i in range(0, num_iter):
+                dS, nattempts, nmoves = self.state.multiflip_mcmc_sweep(niter=1)
+                sgld_iterate(self.state)
+                if verbose and i % 10 == 0:
+                    print("i: {}, dS: {}, nattempts: {}, nmoves: {}".format(i, dS, nattempts, nmoves))
+
             return classifier
 
         
