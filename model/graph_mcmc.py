@@ -24,7 +24,8 @@ class Graph_MCMC:
         
         # initialise empty state
         self.state = None
-        self.vertex_marginals = None
+        self.vertex_block_counts = None
+        self.B_max = None
 
         print("Initialised graph with N={} nodes and M={} edges".format(N, M))
 
@@ -55,13 +56,13 @@ class Graph_MCMC:
         return self.state.get_blocks()
 
     
-    def mcmc(self):
+    def mcmc(self, num_iter, verbose=False):
         bs = [] # collect some partitions
 
         def collect_partitions(s):
             bs.append(s.b.a.copy())
 
-        mcmc_equilibrate(self.state, force_niter=1000, callback=collect_partitions, verbose=True)
+        mcmc_equilibrate(self.state, force_niter=num_iter, callback=collect_partitions, verbose=verbose)
 
         # Disambiguate partitions and obtain marginals
         pmode = PartitionModeState(bs, converge=True)
@@ -69,7 +70,57 @@ class Graph_MCMC:
 
         # Now the node marginals are stored in property map pv. We can
         # visualize them as pie charts on the nodes:
-        self.vertex_marginals = pv
+        self.vertex_block_counts = pv
+        self.B_max = pmode.get_B()
+        return self.B_max
+
+
+    def generate_posterior(self):
+        vertices = self.G.get_vertices()
+        N = len(vertices)
+        B = self.B_max
+
+        posterior_probs = np.zeros((N, B))
+
+        for idx, vertex_id in enumerate(vertices):
+            counts = self.vertex_block_counts[vertex_id]
+            total = np.sum(counts)
+            probs = counts / total
+            b = len(probs)
+
+            posterior_probs[idx, 0:b] = probs[:]
+
+        return posterior_probs
+
+    
+    def sample_classifier_marginals(self, num_iter, verbose=False):
+        if self.vertex_block_counts is None:
+            print("Cannot sample without marginals")
+        else:
+            properties = self.G.vertex_properties
+            D = len(properties)
+
+            vertices = self.G.get_vertices()
+            vertex_marginals = self.vertex_block_counts
+            
+            N = len(vertices)
+            X = np.empty((N, D))
+            Y = self.generate_posterior()
+
+            for prop_index, value_map in enumerate(properties.values()):
+                for vertex_index, vertex_id in enumerate(vertices):
+                    X[vertex_index, prop_index] = value_map[vertex_id]
+
+            classifier = SoftmaxNeuralNet(layers_size=[self.B_max])
+            classifier.sgld_initialise(D)
+
+            for i in range(0, num_iter):
+                cost = classifier.sgld_iterate(step_size=0.01, X=X, Y=Y)
+                if verbose and i % 10 == 0:
+                    print("i: {}, cost: {}".format(i, cost))
+
+            return classifier
+
 
     
     def sample_classifier_mcmc(self, num_iter, verbose=False):
@@ -118,9 +169,9 @@ class Graph_MCMC:
     def draw(self, output=None):
         output = self.gen_output_path(output)            
         if self.state is not None:
-            if self.vertex_marginals is not None:
+            if self.vertex_block_counts is not None:
                 print("Drawing soft partition")
-                self.state.draw(vertex_shape="pie", vertex_pie_fractions=self.vertex_marginals, output=output)
+                self.state.draw(vertex_shape="pie", vertex_pie_fractions=self.vertex_block_counts, output=output)
             else:
                 print("Drawing hard state partition")
                 self.state.draw(output=output)

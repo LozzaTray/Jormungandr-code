@@ -258,7 +258,38 @@ class SoftmaxNeuralNet:
         
         plt.title("Sampled softmax weightings")
         plt.xlabel("Class label")
-        plt.ylabel("Weight mean $\pm \sigma$")
+        plt.ylabel("Weight mean $\\pm \\sigma$")
+        plt.grid()
+        plt.legend()
+        plt.show()
+
+    def plot_sample_histogram(self):
+        W_history = self.weight_history["W" + str(self.L)]
+        n = len(W_history)
+        values = [w[0, 0] for w in W_history]     
+        plt.hist(values)
+        
+        plt.title("Weight samples (n={})".format(n))
+        plt.xlabel("Value")
+        plt.ylabel("Frequency")
+        plt.grid()
+        plt.show()
+
+    
+    def plot_sample_history(self):
+        W_history = self.weight_history["W" + str(self.L)]
+        
+        B = W_history[0].shape[0]
+        D = W_history[0].shape[1]
+        n = len(W_history)       
+
+        for b in range(0, B):
+            mean = [np.mean(w[b, :]) for w in W_history]
+            plt.plot(mean, label="block-{}".format(b))
+        
+        plt.title("Sampled softmax weightings")
+        plt.xlabel("Sample index")
+        plt.ylabel("Weight")
         plt.grid()
         plt.legend()
         plt.show()
