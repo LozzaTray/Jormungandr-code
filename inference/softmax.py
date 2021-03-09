@@ -3,8 +3,6 @@
 import numpy as np
 import matplotlib.pylab as plt
 from sklearn.preprocessing import OneHotEncoder
-import tensorflow as tf
-import pysgmcmc as pg
 
 
 class SoftmaxNeuralNet:
