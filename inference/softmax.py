@@ -120,7 +120,7 @@ class SoftmaxNeuralNet:
 
     
     def sgld_iterate(self, step_size, X, Y):
-        """Perform one iteration of sgld"""
+        """Perform one iteration of sgld, returns previous cost"""
         self.n = X.shape[0]
 
         A, store = self._forward(X)
@@ -131,14 +131,14 @@ class SoftmaxNeuralNet:
         for l in range(1, self.L + 1):
             weight_shape = self.parameters["W" + str(l)].shape
             weight_noise = np.sqrt(step_size) * np.random.randn(*weight_shape) # * unpacks tuple into arg list
-            new_weight = self.parameters["W" + str(l)] - step_size * derivatives["dW" + str(l)] / 2 + weight_noise
+            new_weight = self.parameters["W" + str(l)] - 100 * step_size * derivatives["dW" + str(l)] / 2 + weight_noise
 
             self.parameters["W" + str(l)] = new_weight
             self.weight_history["W" + str(l)].append(new_weight)
 
             bias_shape = self.parameters["b" + str(l)].shape
             bias_noise = np.sqrt(step_size) * np.random.randn(*bias_shape)
-            new_bias = self.parameters["b" + str(l)] - step_size * derivatives["db" + str(l)] / 2 + bias_noise
+            new_bias = self.parameters["b" + str(l)] - 100 * step_size * derivatives["db" + str(l)] / 2 + bias_noise
 
             self.parameters["b" + str(l)] = new_bias
             self.bias_history["b" + str(l)].append(new_bias)
@@ -221,7 +221,7 @@ class SoftmaxNeuralNet:
             x = np.array(range(0, B)) + (width * d)
             plt.bar(x, y, width=width, label=feature_names[d])
         
-        plt.title("Softmax weightings")
+        plt.title("ML softmax fit")
         plt.xlabel("Class label")
         plt.ylabel("Weight")
         plt.legend()
@@ -237,7 +237,7 @@ class SoftmaxNeuralNet:
 
         assert len(feature_names) == D
 
-        width = 0.8 / D
+        width = 0.4 / D
 
         for d in range(0, D):
             mean = np.zeros(B)
@@ -258,7 +258,7 @@ class SoftmaxNeuralNet:
             x = np.array(range(0, B)) + (width * d)
             plt.bar(x=x, height=height, bottom=bottom, width=width, label=feature_names[d])
         
-        plt.title("Softmax weightings")
+        plt.title("Sampled softmax weightings")
         plt.xlabel("Class label")
         plt.ylabel("Weight mean $\pm \sigma$")
         plt.grid()

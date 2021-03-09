@@ -79,7 +79,7 @@ class Graph_MCMC:
             properties = self.G.vertex_properties
             D = len(properties)
 
-            B = self.state.get_B()
+            B = self.state.get_nonempty_B()
             vertices = self.G.get_vertices()
             N = len(vertices)
 
@@ -99,16 +99,17 @@ class Graph_MCMC:
                     Y[vertex_index] = blocks[vertex_id]
 
                 Y = from_values_to_one_hot(Y)
-                classifier.sgld_iterate(step_size=0.01, X=X, Y=Y)
+                cost = classifier.sgld_iterate(step_size=0.01, X=X, Y=Y)
+                return cost
 
             classifier.sgld_initialise(D)
 
             # mcmc_equilibrate(self.state, force_niter=num_iter, callback=sgld_iterate, verbose=verbose)
             for i in range(0, num_iter):
-                dS, nattempts, nmoves = self.state.multiflip_mcmc_sweep(niter=1, d=1.0) # d is prob of selecting new empty group
-                sgld_iterate(self.state)
+                dS, nattempts, nmoves = self.state.multiflip_mcmc_sweep(niter=1, psplit=0)
+                cost = sgld_iterate(self.state)
                 if verbose and i % 10 == 0:
-                    print("i: {}, dS: {}, nattempts: {}, nmoves: {}".format(i, dS, nattempts, nmoves))
+                    print("i: {}, dS: {}, nattempts: {}, nmoves: {}, cost: {}".format(i, dS, nattempts, nmoves, cost))
 
             return classifier
 
@@ -147,7 +148,7 @@ class Graph_MCMC:
             properties = self.G.vertex_properties
             D = len(properties)
 
-            B = self.state.get_B()
+            B = self.state.get_nonempty_B()
             vertices = self.G.get_vertices()
             N = len(vertices)
 
@@ -166,8 +167,7 @@ class Graph_MCMC:
             classifier = SoftmaxNeuralNet(layers_size=[B])
             classifier.fit(X, Y)
 
-            classifier.plot_final_weights(list(properties.keys()))
-            classifier.plot_cost()
+            return classifier
 
     
     def plot_community_property_fractions(self):

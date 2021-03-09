@@ -45,7 +45,7 @@ def mcmc():
     #graph.plot_matrix()
     #graph.plot_community_property_fractions()
     classifier = graph.sample_classifier_mcmc(100, verbose=True)
-    classifier.plot_sampled_weights(selected_feat_names)
+    classifier.plot_sampled_weights(selected_feat_names[:-1])
     #graph.mcmc()
     #graph.train_feature_classifier()
 
