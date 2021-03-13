@@ -4,10 +4,10 @@ library("sgmcmc")
 covertype = getDataset("covertype")
 
 set.seed(13)
-testObservations = sample(nrow(covertype), 10^4)
-testSet = covertype[testObservations,]
-X = covertype[-c(testObservations),2:ncol(covertype)]
-y = covertype[-c(testObservations),1]
+test_observations = sample(nrow(covertype), 10^4)
+testSet = covertype[test_observations,]
+X = covertype[-c(test_observations),2:ncol(covertype)]
+y = covertype[-c(test_observations),1]
 dataset = list( "X" = X, "y" = y )
 
 # Get the dimension of X, needed to set shape of params$beta
@@ -28,23 +28,26 @@ logPrior = function(params) {
 stepsizesMCMC = list("beta" = 5e-6, "bias" = 5e-6)
 stepsizesOptimization = 5e-6
 
-output = sgldcv(logLik, dataset, params, stepsizesMCMC, stepsizesOptimization, logPrior = logPrior, 
-        minibatchSize = 500, nIters = 11000, verbose = FALSE, seed = 13 )
+print("hello")
 
+output = sgldcv(logLik, dataset, params, stepsizesMCMC, stepsizesOptimization, logPrior = logPrior, 
+        minibatchSize = 500, nIters = 100, verbose = TRUE, seed = 13 )
+
+print("again")
 
 yTest = testSet[,1]
 XTest = testSet[,2:ncol(testSet)]
 # Remove burn-in
 output$bias = output$bias[-c(1:1000)]
 output$beta = output$beta[-c(1:1000),,]
-iterations = seq(from = 1, to = 10^4, by = 10)
+iterations = seq(from = 1, to = 100, by = 10)
 logLoss = rep(0, length(iterations))
 # Calculate log loss every 10 iterations
 for ( iter in 1:length(iterations) ) {
     j = iterations[iter]
     # Get parameters at iteration j
     beta0_j = output$bias[j]
-    beta_j = output$beta[j,]
+    beta_j = output$beta[j]
     for ( i in 1:length(yTest) ) {
         pihat_ij = 1 / (1 + exp(- beta0_j - sum(XTest[i,] * beta_j)))
         y_i = yTest[i]
