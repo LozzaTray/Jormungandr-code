@@ -1,10 +1,15 @@
 import numpy as np
+# version focal seems to be winner
 from graph_tool import Graph as GT_Graph
-from graph_tool.all import graph_draw, BlockState, mcmc_equilibrate, PartitionModeState
-from graph_tool.inference import minimize_blockmodel_dl
+# X-server must be running else import will timeout
+from graph_tool.draw import graph_draw
+from graph_tool.inference import minimize_blockmodel_dl, mcmc_equilibrate, PartitionModeState
 import matplotlib.pyplot as plt
 from inference.softmax import SoftmaxNeuralNet, from_values_to_one_hot
-## version focal seems to be winner
+import os
+
+curr_dir = os.path.dirname(__file__)
+output_dir = os.path.join(curr_dir, "..", "output")
 
 
 class Graph_MCMC:
@@ -264,5 +269,6 @@ class Graph_MCMC:
     def gen_output_path(self, filename):
         ## valid extensions: .pdf, .png, .svg
         if filename is not None:
-            return "output/" + filename
+            return os.path.join(output_dir, filename)
+        return None
 
