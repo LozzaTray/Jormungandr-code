@@ -129,7 +129,7 @@ class Graph_MCMC:
     def get_feature_names(self):
         """returns array of feature names"""
         properties = self.G.vertex_properties
-        return [key for key in properties.keys()]
+        return [key.replace("\x00", "-") for key in properties.keys()]
 
     
     def sample_classifier_marginals(self, num_iter, verbose=False):

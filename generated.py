@@ -6,8 +6,8 @@ def run():
     graph = Graph_MCMC([])
     graph.read_from_file("generated.gml")
 
-    graph.partition(B_min=2, B_max=5)
     feature_names = graph.get_feature_names()
+    graph.partition(B_min=2, B_max=5)
 
     # ml_classifier = graph.train_map_classifier()
     # ml_classifier.plot_final_weights(feature_names)
