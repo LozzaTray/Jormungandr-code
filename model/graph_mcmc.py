@@ -62,6 +62,10 @@ class Graph_MCMC:
 
     
     def mcmc(self, num_iter, verbose=False):
+        """
+        Performs mcmc sampling of posterior on blocks
+        returns: B_max - the highest number of blocks across samples
+        """
         bs = [] # collect some partitions
 
         def collect_partitions(s):
@@ -81,6 +85,10 @@ class Graph_MCMC:
 
 
     def generate_posterior(self):
+        """
+        return Y: (N x B) matrix of posterior probabilities
+        Y[n, b] = Prob vertex n belongs to block b
+        """
         vertices = self.G.get_vertices()
         N = len(vertices)
         B = self.B_max
@@ -98,25 +106,43 @@ class Graph_MCMC:
         return posterior_probs
 
     
+    def generate_feature_matrix(self):
+        """
+        return X: (N x D) matrix of node features
+        X[n, d] = feature d of vertex n
+        """
+        properties = self.G.vertex_properties
+        D = len(properties)
+
+        vertices = self.G.get_vertices()
+        
+        N = len(vertices)
+        X = np.empty((N, D))
+
+        for prop_index, value_map in enumerate(properties.values()):
+            for vertex_index, vertex_id in enumerate(vertices):
+                X[vertex_index, prop_index] = value_map[vertex_id]
+        
+        return X
+
+    
+    def get_feature_names(self):
+        """returns array of feature names"""
+        properties = self.G.vertex_properties
+        return [key for key in properties.keys()]
+
+    
     def sample_classifier_marginals(self, num_iter, verbose=False):
         if self.vertex_block_counts is None:
             print("Cannot sample without marginals")
         else:
-            properties = self.G.vertex_properties
-            D = len(properties)
-
-            vertices = self.G.get_vertices()
-            vertex_marginals = self.vertex_block_counts
-            
-            N = len(vertices)
-            X = np.empty((N, D))
+            X = self.generate_feature_matrix()
             Y = self.generate_posterior()
 
-            for prop_index, value_map in enumerate(properties.values()):
-                for vertex_index, vertex_id in enumerate(vertices):
-                    X[vertex_index, prop_index] = value_map[vertex_id]
+            D = X.shape[1]
+            B = Y.shape[1]
 
-            classifier = SoftmaxNeuralNet(layers_size=[self.B_max])
+            classifier = SoftmaxNeuralNet(layers_size=[B])
             classifier.sgld_initialise(D)
 
             for i in range(0, num_iter):
@@ -139,11 +165,7 @@ class Graph_MCMC:
             vertices = self.G.get_vertices()
             N = len(vertices)
 
-            X = np.empty((N, D))
-
-            for prop_index, value_map in enumerate(properties.values()):
-                for vertex_index, vertex_id in enumerate(vertices):
-                    X[vertex_index, prop_index] = value_map[vertex_id]
+            X = self.generate_feature_matrix()
 
             classifier = SoftmaxNeuralNet(layers_size=[B])
 
@@ -197,22 +219,15 @@ class Graph_MCMC:
             print("No state partition detected >> cannot draw matrix")
 
     
-    def train_feature_classifier(self):
+    def train_map_classifier(self):
         if self.state is None:
             print("No state partition detected >> ABORT")
         else:
-            properties = self.G.vertex_properties
-            D = len(properties)
-
             B = self.state.get_nonempty_B()
             vertices = self.G.get_vertices()
             N = len(vertices)
 
-            X = np.empty((N, D))
-
-            for prop_index, value_map in enumerate(properties.values()):
-                for vertex_index, vertex_id in enumerate(vertices):
-                    X[vertex_index, prop_index] = value_map[vertex_id]
+            X = self.generate_feature_matrix()
 
             blocks = self.state.get_blocks() # dictionary: vertex -> block_index
             Y = np.empty(N)
