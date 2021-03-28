@@ -132,7 +132,7 @@ class Graph_MCMC:
         return [key.replace("\x00", "-") for key in properties.keys()]
 
     
-    def sample_classifier_marginals(self, num_iter, verbose=False):
+    def sample_classifier_marginals(self, num_iter, sigma=1, verbose=False):
         if self.vertex_block_counts is None:
             print("Cannot sample without marginals")
         else:
@@ -142,7 +142,7 @@ class Graph_MCMC:
             D = X.shape[1]
             B = Y.shape[1]
 
-            classifier = SoftmaxNeuralNet(layers_size=[B])
+            classifier = SoftmaxNeuralNet(layers_size=[B], sigma=sigma)
             classifier.sgld_initialise(D)
 
             for i in range(0, num_iter):

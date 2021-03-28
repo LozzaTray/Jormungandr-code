@@ -15,8 +15,8 @@ def run():
     # mcmc_classifier = graph.sample_classifier_mcmc(100, True)
     # mcmc_classifier.plot_sampled_weights(feature_names)
 
-    _B_max = graph.mcmc(100, verbose=True)
-    marginal_classifier = graph.sample_classifier_marginals(100, verbose=True)
+    _B_max = graph.mcmc(10, verbose=True)
+    marginal_classifier = graph.sample_classifier_marginals(100, sigma=0.01, verbose=True)
     marginal_classifier.plot_sampled_weights(feature_names)
     marginal_classifier.plot_sample_histogram()
     marginal_classifier.plot_sample_history()

@@ -4,17 +4,19 @@ import numpy as np
 import matplotlib.pylab as plt
 from sklearn.preprocessing import OneHotEncoder
 
+np.seterr(invalid="raise")
 
 class SoftmaxNeuralNet:
 
 
-    def __init__(self, layers_size):
+    def __init__(self, layers_size, sigma=1):
         """Initialise Neural Network"""
         self.layers_size = layers_size
         self.parameters = {}
         self.L = len(self.layers_size)
         self.n = 0
         self.costs = []
+        self.sigma = 1
 
 
     def sigmoid(self, Z):
@@ -22,7 +24,8 @@ class SoftmaxNeuralNet:
 
 
     def softmax(self, Z):
-        expZ = np.exp(Z - np.max(Z))
+        expZ = np.exp(Z - np.max(Z, axis=0, keepdims=True)) # keep numerically stable / avoid overflow
+        expZ = np.nan_to_num(expZ)
         return expZ / expZ.sum(axis=0, keepdims=True)
 
 
@@ -53,6 +56,7 @@ class SoftmaxNeuralNet:
         A = self.softmax(Z)
         store["A" + str(self.L)] = A
         store["W" + str(self.L)] = self.parameters["W" + str(self.L)]
+        store["b" + str(self.L)] = self.parameters["b" + str(self.L)]
         store["Z" + str(self.L)] = Z
 
         return A, store
@@ -91,12 +95,26 @@ class SoftmaxNeuralNet:
 
         return derivatives
 
+
+    def _log_prior_derivative(self, store):
+        derivatives = {}
+
+        for l in range(1, self.L + 1):
+            derivatives["dW" + str(l)] = - store["W" + str(l)] / self.sigma
+            derivatives["db" + str(l)] = - store["b" + str(l)] / self.sigma
+
+        return derivatives
+
     
     def _backward_log_posterior(self, X, Y, store):
         log_lik_derivatives = self._backward_cross_entropy_loss(X, Y, store)
-        # log_prior_derivatives = TODO: implement log_prior
-        # return log_lik_derivatives + log_prior_derivatives # will need for logic to join
-        return log_lik_derivatives
+        log_prior_derivatives = self._log_prior_derivative(store)
+
+        log_post_derivatives = {}
+        for key in log_lik_derivatives:
+            log_post_derivatives[key] = self.n * log_lik_derivatives[key] + log_prior_derivatives[key]
+
+        return log_post_derivatives
 
 
     def sgld_initialise(self, input_dimension):
@@ -129,14 +147,14 @@ class SoftmaxNeuralNet:
         for l in range(1, self.L + 1):
             weight_shape = self.parameters["W" + str(l)].shape
             weight_noise = np.sqrt(step_size) * np.random.randn(*weight_shape) # * unpacks tuple into arg list
-            new_weight = self.parameters["W" + str(l)] - 100 * step_size * derivatives["dW" + str(l)] / 2 + weight_noise
+            new_weight = self.parameters["W" + str(l)] - step_size * derivatives["dW" + str(l)] / 2 + weight_noise
 
             self.parameters["W" + str(l)] = new_weight
             self.weight_history["W" + str(l)].append(new_weight)
 
             bias_shape = self.parameters["b" + str(l)].shape
             bias_noise = np.sqrt(step_size) * np.random.randn(*bias_shape)
-            new_bias = self.parameters["b" + str(l)] - 100 * step_size * derivatives["db" + str(l)] / 2 + bias_noise
+            new_bias = self.parameters["b" + str(l)] - step_size * derivatives["db" + str(l)] / 2 + bias_noise
 
             self.parameters["b" + str(l)] = new_bias
             self.bias_history["b" + str(l)].append(new_bias)

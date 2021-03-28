@@ -40,14 +40,18 @@ def mcmc():
         feature_flags = [fb.node_has_feature(str(vertex), feat_id) for vertex in vertices]
         graph.add_property(feature_name, "bool", feature_flags)
 
-    graph.partition(B_min=2, B_max=5)
+    graph.partition(B_min=2, B_max=10)
+    graph.mcmc(num_iter=100)
     #graph.draw("partition.png")
     #graph.plot_matrix()
     #graph.plot_community_property_fractions()
-    classifier = graph.sample_classifier_mcmc(100, verbose=True)
-    classifier.plot_sampled_weights(selected_feat_names[:-1])
-    #graph.mcmc()
-    #graph.train_feature_classifier()
+    marginal_classifier = graph.sample_classifier_marginals(1000, verbose=True)    
+    
+    feature_names = graph.get_feature_names()
+
+    marginal_classifier.plot_sampled_weights(feature_names)
+    marginal_classifier.plot_sample_histogram()
+    marginal_classifier.plot_sample_history()
 
 
 if __name__ == "__main__":
