@@ -3,13 +3,13 @@
 import numpy as np
 import matplotlib.pylab as plt
 from sklearn.preprocessing import OneHotEncoder
+import math
 
-np.seterr(invalid="raise")
 
 class SoftmaxNeuralNet:
 
 
-    def __init__(self, layers_size, sigma=1):
+    def __init__(self, layers_size, sigma=1, a=250, b=1000, gamma=0.8):
         """Initialise Neural Network"""
         self.layers_size = layers_size
         self.parameters = {}
@@ -17,6 +17,9 @@ class SoftmaxNeuralNet:
         self.n = 0
         self.costs = []
         self.sigma = 1
+        self.a = a
+        self.b = b
+        self.gamma = gamma
 
 
     def sigmoid(self, Z):
@@ -123,6 +126,7 @@ class SoftmaxNeuralNet:
         self._initialize_parameters()
         self.weight_history = {}
         self.bias_history = {}
+        self.t = 0
 
         for l in range(1, len(self.layers_size)):
             self.weight_history["W" + str(l)] = []
@@ -135,9 +139,11 @@ class SoftmaxNeuralNet:
         return cost
 
     
-    def sgld_iterate(self, step_size, X, Y):
+    def sgld_iterate(self, X, Y, step_scaling=1):
         """Perform one iteration of sgld, returns previous cost"""
         self.n = X.shape[0]
+        step_size = step_scaling * self.anneal_step_size(self.t)
+        self.t += 1
 
         A, store = self._forward(X)
         cost = -np.mean(Y * np.log(A.T + 1e-8))
@@ -160,6 +166,10 @@ class SoftmaxNeuralNet:
             self.bias_history["b" + str(l)].append(new_bias)
 
         return cost
+
+
+    def anneal_step_size(self, t):
+        return self.a * math.pow(self.b + t, -1 * self.gamma)
 
 
     def fit(self, X, Y, learning_rate=0.01, n_iterations=2500, seed=None, verbose=False):

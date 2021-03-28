@@ -13,7 +13,7 @@ def run():
     classifier.sgld_initialise(D)
 
     for n in range(0, 1000):
-        cost = classifier.sgld_iterate(0.00001, X, Y)
+        cost = classifier.sgld_iterate(X, Y)
         if n % 100 == 0:
             print("cost:{}".format(cost))
 

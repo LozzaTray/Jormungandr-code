@@ -45,7 +45,8 @@ def mcmc():
     #graph.draw("partition.png")
     #graph.plot_matrix()
     #graph.plot_community_property_fractions()
-    marginal_classifier = graph.sample_classifier_marginals(1000, verbose=True)    
+    hard_classifier = graph.train_map_classifier()
+    marginal_classifier = graph.sample_classifier_marginals(1000, step_size=0.0001, sigma=1, verbose=True)    
     
     feature_names = graph.get_feature_names()
 

@@ -42,6 +42,9 @@ class PolBlog:
         kmeans = KMeans(n_clusters=k).fit(node_pos_arr) # can use flag random_state=0 to intialise seed
         return kmeans.cluster_centers_
 
+    
+    def get_edge_list(self):
+        return self.graph.edges
 
 
     def draw(self):

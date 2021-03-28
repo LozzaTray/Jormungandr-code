@@ -6,6 +6,7 @@ from graph_tool.draw import graph_draw
 from graph_tool.inference import minimize_blockmodel_dl, mcmc_equilibrate, PartitionModeState
 import matplotlib.pyplot as plt
 from inference.softmax import SoftmaxNeuralNet, from_values_to_one_hot
+from data.utils import get_misc_path
 import os
 
 curr_dir = os.path.dirname(__file__)
@@ -36,9 +37,22 @@ class Graph_MCMC:
 
     
     def read_from_file(self, filename):
-        filename = self.gen_output_path(filename)
+        filename = get_misc_path(filename)
         self.G = GT_Graph(directed=False)
         self.G.load(filename)
+
+
+    def filter_out_low_degree(self, min_degree):
+        """Removes all vertices with degree strictly less than min_degree"""
+        vertices = self.G.get_vertices()
+        degree_arr = self.G.get_total_degrees(vertices)
+        
+        remove_arr = []
+        for idx, degree in enumerate(degree_arr):
+            if degree < min_degree:
+                remove_arr.append(idx)
+        
+        self.G.remove_vertex(remove_arr)
 
 
     def get_vertex_list(self):
@@ -132,7 +146,7 @@ class Graph_MCMC:
         return [key.replace("\x00", "-") for key in properties.keys()]
 
     
-    def sample_classifier_marginals(self, num_iter, sigma=1, verbose=False):
+    def sample_classifier_marginals(self, num_iter, step_scaling=1, sigma=1, verbose=False):
         if self.vertex_block_counts is None:
             print("Cannot sample without marginals")
         else:
@@ -146,7 +160,7 @@ class Graph_MCMC:
             classifier.sgld_initialise(D)
 
             for i in range(0, num_iter):
-                cost = classifier.sgld_iterate(step_size=0.01, X=X, Y=Y)
+                cost = classifier.sgld_iterate(X=X, Y=Y, step_scaling=step_scaling)
                 if verbose and i % 10 == 0:
                     print("i: {}, cost: {}".format(i, cost))
 
@@ -177,7 +191,7 @@ class Graph_MCMC:
                     Y[vertex_index] = blocks[vertex_id]
 
                 Y = from_values_to_one_hot(Y)
-                cost = classifier.sgld_iterate(step_size=0.01, X=X, Y=Y)
+                cost = classifier.sgld_iterate(X=X, Y=Y)
                 return cost
 
             classifier.sgld_initialise(D)
