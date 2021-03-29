@@ -13,20 +13,21 @@ class SoftmaxNeuralNet:
         """Initialise Neural Network"""
         self.layers_size = layers_size
         self.parameters = {}
-        self.L = len(self.layers_size)
+        self.L = len(self.layers_size) - 1 # number of activation layers
         self.n = 0
         self.costs = []
         self.sigma = 1
         self.a = a
         self.b = b
         self.gamma = gamma
+        self._initialize_parameters()
 
 
-    def sigmoid(self, Z):
+    def _sigmoid(self, Z):
         return 1 / (1 + np.exp(-Z))
 
 
-    def softmax(self, Z):
+    def _softmax(self, Z):
         expZ = np.exp(Z - np.max(Z, axis=0, keepdims=True)) # keep numerically stable / avoid overflow
         expZ = np.nan_to_num(expZ)
         return expZ / expZ.sum(axis=0, keepdims=True)
@@ -48,7 +49,7 @@ class SoftmaxNeuralNet:
         for l in range(self.L - 1):
             Z = self.parameters["W" + str(l + 1)].dot(A) + \
                 self.parameters["b" + str(l + 1)]
-            A = self.sigmoid(Z)
+            A = self._sigmoid(Z)
             store["A" + str(l + 1)] = A
             store["W" + str(l + 1)] = self.parameters["W" + str(l + 1)]
             store["Z" + str(l + 1)] = Z
@@ -56,7 +57,7 @@ class SoftmaxNeuralNet:
         ## final softmax layer
         Z = self.parameters["W" + str(self.L)].dot(A) + \
             self.parameters["b" + str(self.L)]
-        A = self.softmax(Z)
+        A = self._softmax(Z)
         store["A" + str(self.L)] = A
         store["W" + str(self.L)] = self.parameters["W" + str(self.L)]
         store["b" + str(self.L)] = self.parameters["b" + str(self.L)]
@@ -120,10 +121,14 @@ class SoftmaxNeuralNet:
         return log_post_derivatives
 
 
-    def sgld_initialise(self, input_dimension):
+    def cross_entropy_loss(self, X, Y):
+        A, _store = self._forward(X)
+        cost = -np.mean(Y * np.log(A.T + 1e-8))
+        return cost
+
+        
+    def sgld_initialise(self):
         """Initilaise SGLD - Stochastic Gradient Langevin Diffusion for MCMC sampling form posterior"""
-        self.layers_size.insert(0, input_dimension)
-        self._initialize_parameters()
         self.weight_history = {}
         self.bias_history = {}
         self.t = 0
@@ -131,12 +136,6 @@ class SoftmaxNeuralNet:
         for l in range(1, len(self.layers_size)):
             self.weight_history["W" + str(l)] = []
             self.bias_history["b" + str(l)] = []
-
-    
-    def cross_entropy_loss(self, X, Y):
-        A, _store = self._forward(X)
-        cost = -np.mean(Y * np.log(A.T + 1e-8))
-        return cost
 
     
     def sgld_iterate(self, X, Y, step_scaling=1):
@@ -192,9 +191,6 @@ class SoftmaxNeuralNet:
         if Y.shape[0] != self.layers_size[-1]:
             Y = from_values_to_one_hot(Y)
 
-        # add input layer
-        self.layers_size.insert(0, X.shape[1])
-        self._initialize_parameters()
         for loop in range(n_iterations):
             A, store = self._forward(X)
             cost = -np.mean(Y * np.log(A.T + 1e-8))
@@ -290,6 +286,7 @@ class SoftmaxNeuralNet:
         plt.grid()
         plt.legend()
         plt.show()
+
 
     def plot_sample_histogram(self):
         W_history = self.weight_history["W" + str(self.L)]

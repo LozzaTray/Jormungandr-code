@@ -156,8 +156,8 @@ class Graph_MCMC:
             D = X.shape[1]
             B = Y.shape[1]
 
-            classifier = SoftmaxNeuralNet(layers_size=[B], sigma=sigma)
-            classifier.sgld_initialise(D)
+            classifier = SoftmaxNeuralNet(layers_size=[D, B], sigma=sigma)
+            classifier.sgld_initialise()
 
             for i in range(0, num_iter):
                 cost = classifier.sgld_iterate(X=X, Y=Y, step_scaling=step_scaling)
@@ -181,7 +181,7 @@ class Graph_MCMC:
 
             X = self.generate_feature_matrix()
 
-            classifier = SoftmaxNeuralNet(layers_size=[B])
+            classifier = SoftmaxNeuralNet(layers_size=[D, B])
 
             def sgld_iterate(state):
                 blocks = state.get_blocks()
@@ -194,7 +194,7 @@ class Graph_MCMC:
                 cost = classifier.sgld_iterate(X=X, Y=Y)
                 return cost
 
-            classifier.sgld_initialise(D)
+            classifier.sgld_initialise()
 
             # mcmc_equilibrate(self.state, force_niter=num_iter, callback=sgld_iterate, verbose=verbose)
             for i in range(0, num_iter):
@@ -242,6 +242,7 @@ class Graph_MCMC:
             N = len(vertices)
 
             X = self.generate_feature_matrix()
+            D = X.shape[1]
 
             blocks = self.state.get_blocks() # dictionary: vertex -> block_index
             Y = np.empty(N)
@@ -249,7 +250,7 @@ class Graph_MCMC:
             for vertex_index, vertex_id in enumerate(vertices):
                 Y[vertex_index] = blocks[vertex_id]
 
-            classifier = SoftmaxNeuralNet(layers_size=[B])
+            classifier = SoftmaxNeuralNet(layers_size=[D, B])
             classifier.fit(X, Y)
 
             return classifier

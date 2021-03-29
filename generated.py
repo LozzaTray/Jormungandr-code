@@ -1,6 +1,4 @@
 from model.graph_mcmc import Graph_MCMC
-from inference.softmax import SoftmaxNeuralNet
-
 
 def run():
     graph = Graph_MCMC([])
