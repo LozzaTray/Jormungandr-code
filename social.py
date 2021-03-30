@@ -45,11 +45,12 @@ def mcmc():
     #graph.draw("partition.png")
     #graph.plot_matrix()
     #graph.plot_community_property_fractions()
-    hard_classifier = graph.train_map_classifier()
+
     marginal_classifier = graph.sample_classifier_marginals(1000, step_scaling=0.01, sigma=1, verbose=True)    
     
     feature_names = graph.get_feature_names()
 
+    marginal_classifier.sgld_sample_thinning()
     marginal_classifier.plot_sampled_weights(feature_names)
     marginal_classifier.plot_sample_histogram()
     marginal_classifier.plot_sample_history()

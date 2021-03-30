@@ -71,7 +71,7 @@ class SoftmaxNeuralNet:
         return s * (1 - s)
 
 
-    def _backward_cross_entropy_loss(self, X, Y, store):
+    def _backward_cross_entropy_deriv(self, X, Y, store):
 
         derivatives = {}
 
@@ -110,13 +110,13 @@ class SoftmaxNeuralNet:
         return derivatives
 
     
-    def _backward_log_posterior(self, X, Y, store):
-        log_lik_derivatives = self._backward_cross_entropy_loss(X, Y, store)
+    def _backward_log_posterior_deriv(self, X, Y, store):
+        log_lik_derivatives = self._backward_cross_entropy_deriv(X, Y, store)
         log_prior_derivatives = self._log_prior_derivative(store)
 
         log_post_derivatives = {}
         for key in log_lik_derivatives:
-            log_post_derivatives[key] = self.n * log_lik_derivatives[key] + log_prior_derivatives[key]
+            log_post_derivatives[key] = self.n * log_lik_derivatives[key] - log_prior_derivatives[key]
 
         return log_post_derivatives
 
@@ -126,7 +126,7 @@ class SoftmaxNeuralNet:
         cost = -np.mean(Y * np.log(A.T + 1e-8))
         return cost
 
-        
+
     def sgld_initialise(self):
         """Initilaise SGLD - Stochastic Gradient Langevin Diffusion for MCMC sampling form posterior"""
         self.weight_history = {}
@@ -146,7 +146,7 @@ class SoftmaxNeuralNet:
 
         A, store = self._forward(X)
         cost = -np.mean(Y * np.log(A.T + 1e-8))
-        derivatives = self._backward_log_posterior(X, Y, store)
+        derivatives = self._backward_log_posterior_deriv(X, Y, store)
 
 
         for l in range(1, self.L + 1):
@@ -165,6 +165,17 @@ class SoftmaxNeuralNet:
             self.bias_history["b" + str(l)].append(new_bias)
 
         return cost
+
+    
+    def sgld_sample_thinning(self, burn_in_pc=10, thinning_pc=20):
+        """discard samples pre burn-in and only select keep thinning_pc of rest"""
+        stop = len(self.weight_history["W" + str(self.L)])
+        start = int(stop * burn_in_pc / 100)
+        step = int(100 / thinning_pc)
+
+        for l in range(1, self.L + 1):
+            self.weight_history["W" + str(self.L)] = self.weight_history["W" + str(self.L)][start:stop:step]
+            self.bias_history["b" + str(self.L)] = self.bias_history["b" + str(self.L)][start:stop:step]
 
 
     def anneal_step_size(self, t):
@@ -194,7 +205,7 @@ class SoftmaxNeuralNet:
         for loop in range(n_iterations):
             A, store = self._forward(X)
             cost = -np.mean(Y * np.log(A.T + 1e-8))
-            derivatives = self._backward_cross_entropy_loss(X, Y, store)
+            derivatives = self._backward_cross_entropy_deriv(X, Y, store)
 
             for l in range(1, self.L + 1):
                 self.parameters["W" + str(l)] = self.parameters["W" + str(l)] - learning_rate * derivatives[
@@ -251,7 +262,8 @@ class SoftmaxNeuralNet:
 
 
     def plot_sampled_weights(self, feature_names):
-        W_history = self.weight_history["W" + str(self.L)]
+        W_history = self.weight_history["W1"]
+        b_history = self.bias_history["b1"]
 
         B = W_history[0].shape[0]
         D = W_history[0].shape[1]
@@ -259,15 +271,23 @@ class SoftmaxNeuralNet:
 
         assert len(feature_names) == D
 
-        width = 0.4 / D
+        feature_names.append("bias")
 
-        for d in range(0, D):
+        width = 0.4 / (D + 1)
+
+        for d in range(0, D + 1):
             mean = np.zeros(B)
             square = np.zeros(B)
             
-            for W in W_history:
-                mean[:] += W[:, d]
-                square[:] += W[:, d] ** 2
+            if d == D:
+                for b in b_history:
+                    mean[:] += b[:, 0]
+                    square[:] += b[:, 0] ** 2
+            
+            else:
+                for W in W_history:
+                    mean[:] += W[:, d]
+                    square[:] += W[:, d] ** 2
 
             mean = mean / n
             square = square / n

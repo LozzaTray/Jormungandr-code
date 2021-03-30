@@ -63,6 +63,9 @@ class Graph_MCMC:
         vertex_prop = self.G.new_vertex_property(value_type, value_sequence)
         self.G.vertex_properties[name] = vertex_prop # add to graph
 
+    def remove_property(self, name):
+        del self.G.vertex_properties[name]
+
 
     def partition(self, B_min=None, B_max=None, degree_corrected=True):
         """
