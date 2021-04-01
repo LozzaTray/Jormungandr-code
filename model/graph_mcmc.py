@@ -4,6 +4,7 @@ from graph_tool import Graph as GT_Graph
 # X-server must be running else import will timeout
 from graph_tool.draw import graph_draw
 from graph_tool.inference import minimize_blockmodel_dl, mcmc_equilibrate, PartitionModeState
+from graph_tool.collection import data, ns
 import matplotlib.pyplot as plt
 from inference.softmax import SoftmaxNeuralNet, from_values_to_one_hot
 from data.utils import get_misc_path
@@ -46,6 +47,14 @@ class Graph_MCMC:
         filename = get_misc_path(filename)
         self.G.load(filename)
 
+    
+    def read_from_gt(self, dataset_name):
+        self.G = data[dataset_name]
+
+    
+    def read_from_ns(self, dataset_name):
+        self.G = ns[dataset_name]
+
 
     def filter_out_low_degree(self, min_degree):
         """Removes all vertices with degree strictly less than min_degree"""
@@ -60,6 +69,16 @@ class Graph_MCMC:
         self.G.remove_vertex(remove_arr)
 
 
+    def add_ego_node(self):
+        vertices = self.G.get_vertices()
+        v = self.G.add_vertex()
+        edges = []
+        for dest in vertices:
+            edges.append((v, dest))
+
+        self.G.add_edge_list(edges)
+
+
     def get_vertex_list(self):
         """Returns external view of vertices"""
         if self.relabelled_vertices is not None:
@@ -72,8 +91,38 @@ class Graph_MCMC:
         vertex_prop = self.G.new_vertex_property(value_type, value_sequence)
         self.G.vertex_properties[name] = vertex_prop # add to graph
 
+
     def remove_property(self, name):
         del self.G.vertex_properties[name]
+
+
+    def convert_props_to_flags(self):
+        properties = self.G.vertex_properties
+        vertices = self.G.get_vertices()
+        property_names = list(properties.keys())
+
+        for name in property_names:
+            value_map = properties[name]
+            value_type = value_map.value_type()
+            if value_type == "string":
+                values = [value_map[vertex] for vertex in vertices]
+                distinct_features = set(values)
+                distinct_features.discard("") # remove empty string if it exists
+
+                for feature in sorted(distinct_features):
+                    bool_arr = []
+                    for value in values:
+                        if value == feature:
+                            bool_arr.append(True)
+                        else:
+                            bool_arr.append(False)
+                        
+                        self.add_property(feature, "bool", bool_arr)
+            
+                self.remove_property(name)
+
+            else:
+                pass
 
 
     def partition(self, B_min=None, B_max=None, degree_corrected=True):
