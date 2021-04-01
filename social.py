@@ -27,7 +27,7 @@ def standard():
 
     
 def mcmc():
-    ego_id = 107 # 0 or 107
+    ego_id = 0 # 0 or 107
     fb = FacebookGraph(str(ego_id))
     int_edges = [ (int(edge[0]), int(edge[1])) for edge in fb.edges]
     int_edges = np.array(int_edges)
@@ -36,7 +36,9 @@ def mcmc():
     graph.read_from_edges(int_edges)
     vertices = graph.get_vertex_list()
     
-    selected_feat_ids, selected_feat_names = fb.get_feat_ids_and_names(keywords=["gender", "language", "hometown"])
+    selected_feat_ids, selected_feat_names = fb.get_feat_ids_and_names(keywords=["gender", "language", "hometown", "last_name"])
+    #selected_feat_ids, selected_feat_names = fb.get_feat_ids_and_names()
+
 
     for feat_id in selected_feat_ids:
         feature_name = fb.feature_name(feat_id)
@@ -54,7 +56,7 @@ def mcmc():
     feature_names = graph.get_feature_names()
 
     marginal_classifier.sgld_sample_thinning()
-    marginal_classifier.plot_sampled_weights(feature_names)
+    marginal_classifier.plot_sampled_weights(feature_names, std_dev_multiplier=2)
     marginal_classifier.plot_sample_histogram()
     marginal_classifier.plot_sample_history()
 
