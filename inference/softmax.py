@@ -228,6 +228,49 @@ class SoftmaxNeuralNet:
         return accuracy * 100
 
 
+    def compute_mean_variances(self):
+        D = self.layers_size[0]
+        B = self.layers_size[1]
+
+        param_means = np.zeros(shape=(B, D+1))
+        param_std_devs = np.zeros(shape=(B, D+1))
+
+        W_history = self.weight_history["W1"]
+        b_history = self.bias_history["b1"]
+
+        B = W_history[0].shape[0]
+        D = W_history[0].shape[1]
+        n = len(W_history)       
+
+        assert D == W_history[0].shape[1]
+        assert B == W_history[0].shape[0]
+
+        for d in range(0, D + 1):
+            mean = np.zeros(B)
+            square = np.zeros(B)
+            
+            if d == D:
+                for b in b_history:
+                    mean[:] += b[:, 0]
+                    square[:] += b[:, 0] ** 2
+            
+            else:
+                for W in W_history:
+                    mean[:] += W[:, d]
+                    square[:] += W[:, d] ** 2
+
+            mean = mean / n
+            square = square / n
+
+            std_dev = np.sqrt(square - mean ** 2)
+
+            param_means[:, d] = mean
+            param_std_devs[:, d] = std_dev
+
+        self.param_means = param_means
+        self.param_std_devs = param_std_devs
+
+
     def plot_cost(self):
         plt.figure()
         plt.plot(np.arange(len(self.costs)), self.costs)
@@ -265,8 +308,8 @@ class SoftmaxNeuralNet:
         W_history = self.weight_history["W1"]
         b_history = self.bias_history["b1"]
 
-        B = W_history[0].shape[0]
-        D = W_history[0].shape[1]
+        D = self.layers_size[0]
+        B = self.layers_size[1]
         n = len(W_history)       
 
         assert len(feature_names) == D
@@ -276,24 +319,11 @@ class SoftmaxNeuralNet:
         width = 0.4 / (D + 1)
         midpoint = D / 2.0
 
+        self.compute_mean_variances()
+
         for d in range(0, D + 1):
-            mean = np.zeros(B)
-            square = np.zeros(B)
-            
-            if d == D:
-                for b in b_history:
-                    mean[:] += b[:, 0]
-                    square[:] += b[:, 0] ** 2
-            
-            else:
-                for W in W_history:
-                    mean[:] += W[:, d]
-                    square[:] += W[:, d] ** 2
-
-            mean = mean / n
-            square = square / n
-
-            std_dev = np.sqrt(square - mean ** 2)
+            mean = self.param_means[:, d]
+            std_dev = self.param_std_devs[:, d]
 
             height = 2 * std_dev * std_dev_multiplier
             bottom = mean - std_dev
