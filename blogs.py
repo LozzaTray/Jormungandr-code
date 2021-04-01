@@ -3,7 +3,7 @@ from model.graph_mcmc import Graph_MCMC
 
 
 def run():
-    graph = Graph_MCMC([])
+    graph = Graph_MCMC()
     graph.read_from_file("polblogs.gml")
     graph.filter_out_low_degree(2)
     graph.remove_property("label")

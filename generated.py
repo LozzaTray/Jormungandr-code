@@ -1,7 +1,7 @@
 from model.graph_mcmc import Graph_MCMC
 
 def run():
-    graph = Graph_MCMC([])
+    graph = Graph_MCMC()
     graph.read_from_file("generated.gml")
 
     feature_names = graph.get_feature_names()
