@@ -15,7 +15,19 @@ output_dir = os.path.join(curr_dir, "..", "output")
 
 class Graph_MCMC:
 
-    def __init__(self, edges):
+    def __init__(self):
+        """Initialises empty graph"""
+        self.G = GT_Graph(directed=False)
+        
+        # initialise empty state
+        self.state = None
+        self.vertex_block_counts = None
+        self.B_max = None
+        self.relabelled_vertices = None
+
+
+    def read_from_edges(self, edges):
+        """Initialises graph based on edges"""
         origin_vertices = set([edge[0] for edge in edges])
         destin_vertices = set([edge[1] for edge in edges])
 
@@ -25,20 +37,13 @@ class Graph_MCMC:
         N = len(vertex_set)
         M = len(edges)
 
-        self.G = GT_Graph(directed=False)
-        self.G.add_edge_list(edges)
-        
-        # initialise empty state
-        self.state = None
-        self.vertex_block_counts = None
-        self.B_max = None
+        self.relabelled_vertices = self.G.add_edge_list(edges, hashed=True)
 
         print("Initialised graph with N={} nodes and M={} edges".format(N, M))
 
     
     def read_from_file(self, filename):
         filename = get_misc_path(filename)
-        self.G = GT_Graph(directed=False)
         self.G.load(filename)
 
 
@@ -56,7 +61,11 @@ class Graph_MCMC:
 
 
     def get_vertex_list(self):
-        return self.G.get_vertices()
+        """Returns external view of vertices"""
+        if self.relabelled_vertices is not None:
+            return self.relabelled_vertices.get_array()
+        else:
+            return self.G.get_vertices()
 
 
     def add_property(self, name, value_type, value_sequence):
@@ -78,7 +87,7 @@ class Graph_MCMC:
         return self.state.get_blocks()
 
     
-    def mcmc(self, num_iter, verbose=False):
+    def mcmc(self, num_iter, verbose=True):
         """
         Performs mcmc sampling of posterior on blocks
         returns: B_max - the highest number of blocks across samples
@@ -88,7 +97,14 @@ class Graph_MCMC:
         def collect_partitions(s):
             bs.append(s.b.a.copy())
 
-        mcmc_equilibrate(self.state, force_niter=num_iter, callback=collect_partitions, verbose=verbose)
+        for i in range(0, num_iter):
+                dS, nattempts, nmoves = self.state.mcmc_sweep(niter=1, d=0.00)
+                collect_partitions(self.state)
+                if verbose and i % 10 == 0:
+                    print("i: {}, dS: {}, nattempts: {}, nmoves: {}".format(i, dS, nattempts, nmoves))
+
+        # mcmc_equilibrate(self.state, force_niter=num_iter, callback=collect_partitions, mcmc_args={"d": 0.00}, verbose=verbose)
+        # BUG: parameter not passed through correctly
 
         # Disambiguate partitions and obtain marginals
         pmode = PartitionModeState(bs, converge=True)

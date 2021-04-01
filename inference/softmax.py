@@ -261,7 +261,7 @@ class SoftmaxNeuralNet:
         plt.show()
 
 
-    def plot_sampled_weights(self, feature_names):
+    def plot_sampled_weights(self, feature_names, std_dev_multiplier=1):
         W_history = self.weight_history["W1"]
         b_history = self.bias_history["b1"]
 
@@ -274,6 +274,7 @@ class SoftmaxNeuralNet:
         feature_names.append("bias")
 
         width = 0.4 / (D + 1)
+        midpoint = D / 2.0
 
         for d in range(0, D + 1):
             mean = np.zeros(B)
@@ -294,17 +295,21 @@ class SoftmaxNeuralNet:
 
             std_dev = np.sqrt(square - mean ** 2)
 
-            height = 2 * std_dev
+            height = 2 * std_dev * std_dev_multiplier
             bottom = mean - std_dev
 
-            x = np.array(range(0, B)) + (width * d)
+            x = np.arange(0, B, 1) + (width * (d - midpoint))
             plt.bar(x=x, height=height, bottom=bottom, width=width, label=feature_names[d])
+
+        block_centres = np.arange(0, B, 1)
+        block_names = [str(num) for num in range(0, B)]
         
         plt.title("Sampled softmax weightings")
         plt.xlabel("Class label")
-        plt.ylabel("Weight mean $\\pm \\sigma$")
+        plt.ylabel("Weight mean $\\pm {}\\sigma$".format(std_dev_multiplier))
         plt.grid()
         plt.legend()
+        plt.xticks(ticks=block_centres, labels=block_names)
         plt.show()
 
 

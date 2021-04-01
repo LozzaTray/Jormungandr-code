@@ -9,9 +9,10 @@ def run():
     graph.remove_property("label")
     graph.remove_property("source")
     graph.partition(B_min=1, B_max=2)
-    #graph.draw("polblogs.png")
-    graph.mcmc(100)
-    classifier = graph.sample_classifier_marginals(1000, verbose=True)
+    graph.mcmc(100, verbose=True)
+
+    graph.draw("polblogs.png")
+    classifier = graph.sample_classifier_marginals(10000, step_scaling=0.01, verbose=True)
 
     classifier.sgld_sample_thinning()
     classifier.plot_sampled_weights(["Right-Wingness"])

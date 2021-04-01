@@ -3,6 +3,7 @@ from typing import List
 from hypothesis.test_statistics import two_samples_mean_ll_ratio, students_z_test
 from model.graph import Graph
 from model.graph_mcmc import Graph_MCMC
+import numpy as np
 
 
 def standard():
@@ -26,11 +27,13 @@ def standard():
 
     
 def mcmc():
-    ego_id = 0 # 0 or 107
-    fb = FacebookGraph(ego_id)
+    ego_id = 107 # 0 or 107
+    fb = FacebookGraph(str(ego_id))
     int_edges = [ (int(edge[0]), int(edge[1])) for edge in fb.edges]
+    int_edges = np.array(int_edges)
 
-    graph = Graph_MCMC(int_edges)
+    graph = Graph_MCMC()
+    graph.read_from_edges(int_edges)
     vertices = graph.get_vertex_list()
     
     selected_feat_ids, selected_feat_names = fb.get_feat_ids_and_names(keywords=["gender", "language", "hometown"])
