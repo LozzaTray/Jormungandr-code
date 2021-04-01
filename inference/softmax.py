@@ -270,6 +270,34 @@ class SoftmaxNeuralNet:
         self.param_means = param_means
         self.param_std_devs = param_std_devs
 
+    
+    def feature_overlaps_zero(self, feature_index, std_dev_multiplier):
+        means = self.param_means[:, feature_index]
+        std_devs = self.param_std_devs[:, feature_index]
+
+        lower = means - (std_dev_multiplier * std_devs)
+        upper = means + (std_dev_multiplier * std_devs)
+
+        for i in range(0, len(lower)):
+            if lower[i] < 0 and upper[i] > 0:
+                pass
+            else:
+                return False
+
+        return True
+
+    
+    def feature_overlaps_zero_for_class(self, feature_index, class_index, std_dev_multiplier):
+        mean = self.param_means[class_index, feature_index]
+        std_dev = self.param_std_devs[class_index, feature_index]
+
+        lower = mean - (std_dev_multiplier * std_dev)
+        upper = mean + (std_dev_multiplier * std_dev)
+        if lower[i] < 0 and upper[i] > 0:
+            return True
+        else:
+            return False
+
 
     def plot_cost(self):
         plt.figure()
@@ -305,31 +333,42 @@ class SoftmaxNeuralNet:
 
 
     def plot_sampled_weights(self, feature_names, std_dev_multiplier=1):
-        W_history = self.weight_history["W1"]
-        b_history = self.bias_history["b1"]
 
         D = self.layers_size[0]
         B = self.layers_size[1]
-        n = len(W_history)       
 
         assert len(feature_names) == D
 
         feature_names.append("bias")
 
+        self.compute_mean_variances()
+
         width = 0.4 / (D + 1)
         midpoint = D / 2.0
 
-        self.compute_mean_variances()
+        discarded_features = []
+        for d in range(0, D + 1):
+            if self.feature_overlaps_zero(d, std_dev_multiplier):
+                discarded_features.append(d)
+                print("Discarding feature {}: {}".format(d, feature_names[d]))
+
 
         for d in range(0, D + 1):
-            mean = self.param_means[:, d]
-            std_dev = self.param_std_devs[:, d]
+            if d in discarded_features:
+                pass
+            else:
+                mean = self.param_means[:, d]
+                std_dev = self.param_std_devs[:, d]
 
-            height = 2 * std_dev * std_dev_multiplier
-            bottom = mean - std_dev
+                height = 2 * std_dev * std_dev_multiplier
+                bottom = mean - std_dev
 
-            x = np.arange(0, B, 1) + (width * (d - midpoint))
-            plt.bar(x=x, height=height, bottom=bottom, width=width, label=feature_names[d])
+                for b in range(0, B):
+                    if bottom[b] < 0 and bottom[b] + height[b] > 0:
+                        height[b] = 0 #unclutter classifier
+
+                x = np.arange(0, B, 1) + (width * (d - midpoint))
+                plt.bar(x=x, height=height, bottom=bottom, width=width, label=feature_names[d])
 
         block_centres = np.arange(0, B, 1)
         block_names = [str(num) for num in range(0, B)]

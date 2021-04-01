@@ -20,7 +20,7 @@ def run():
     names = graph.get_feature_names()
 
     classifier.sgld_sample_thinning()
-    classifier.plot_sampled_weights(names)
+    classifier.plot_sampled_weights(names, std_dev_multiplier=2)
     classifier.plot_sample_histogram()
     classifier.plot_sample_history()
 
