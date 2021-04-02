@@ -8,6 +8,7 @@ from graph_tool.collection import data, ns
 import matplotlib.pyplot as plt
 from inference.softmax import SoftmaxNeuralNet, from_values_to_one_hot
 from data.utils import get_misc_path
+from tqdm import tqdm
 import os
 
 curr_dir = os.path.dirname(__file__)
@@ -50,10 +51,12 @@ class Graph_MCMC:
     
     def read_from_gt(self, dataset_name):
         self.G = data[dataset_name]
+        self.G.set_directed(False)
 
     
     def read_from_ns(self, dataset_name):
         self.G = ns[dataset_name]
+        self.G.set_directed(False)
 
 
     def filter_out_low_degree(self, min_degree):
@@ -67,6 +70,13 @@ class Graph_MCMC:
                 remove_arr.append(idx)
         
         self.G.remove_vertex(remove_arr)
+
+    
+    def filter_edges(self, property_name, value_to_keep):
+        prop_map = self.G.edge_properties[property_name]
+        filter_arr = [value == value_to_keep for value in prop_map.get_array()]
+        filter_map = self.G.new_edge_property("bool", filter_arr)
+        self.G.set_edge_filter(filter_map)
 
 
     def add_ego_node(self):
@@ -93,7 +103,10 @@ class Graph_MCMC:
 
 
     def remove_property(self, name):
-        del self.G.vertex_properties[name]
+        if name in self.G.vertex_properties:
+            del self.G.vertex_properties[name]
+            return True
+        return False
 
 
     def convert_props_to_flags(self):
@@ -107,6 +120,7 @@ class Graph_MCMC:
             if value_type == "string":
                 values = [value_map[vertex] for vertex in vertices]
                 distinct_features = set(values)
+
                 distinct_features.discard("") # remove empty string if it exists
 
                 for feature in sorted(distinct_features):
@@ -121,9 +135,41 @@ class Graph_MCMC:
             
                 self.remove_property(name)
 
-            else:
+            elif value_type.startswith("int"):
+                self.convert_to_flags(name)
+            
+            elif value_type == "bool":
                 pass
 
+            elif value_type == "float": 
+                pass
+            else: # vector
+                self.remove_property(name)
+
+
+    def convert_to_flags(self, prop_name, new_prop_name=""):
+        vertices = self.G.get_vertices()
+
+        if new_prop_name == "":
+            new_prop_name = prop_name + "-"
+
+        if prop_name in self.G.vertex_properties:
+            value_map = self.G.vertex_properties[prop_name]
+
+            values = [value_map[vertex] for vertex in vertices]
+            distinct_values = set(values)
+
+            for chosen_value in sorted(distinct_values):
+                bool_arr = []
+                for value in values:
+                    if value == chosen_value:
+                        bool_arr.append(True)
+                    else:
+                        bool_arr.append(False)
+                    
+                    self.add_property(new_prop_name + str(chosen_value), "bool", bool_arr)
+        
+            self.remove_property(prop_name)
 
     def partition(self, B_min=None, B_max=None, degree_corrected=True):
         """
@@ -136,7 +182,7 @@ class Graph_MCMC:
         return self.state.get_blocks()
 
     
-    def mcmc(self, num_iter, verbose=True):
+    def mcmc(self, num_iter, verbose=False):
         """
         Performs mcmc sampling of posterior on blocks
         returns: B_max - the highest number of blocks across samples
@@ -146,7 +192,7 @@ class Graph_MCMC:
         def collect_partitions(s):
             bs.append(s.b.a.copy())
 
-        for i in range(0, num_iter):
+        for i in tqdm(range(0, num_iter)):
                 dS, nattempts, nmoves = self.state.mcmc_sweep(niter=1, d=0.00)
                 collect_partitions(self.state)
                 if verbose and i % 10 == 0:
@@ -227,7 +273,7 @@ class Graph_MCMC:
             classifier = SoftmaxNeuralNet(layers_size=[D, B], sigma=sigma)
             classifier.sgld_initialise()
 
-            for i in range(0, num_iter):
+            for i in tqdm(range(0, num_iter)):
                 cost = classifier.sgld_iterate(X=X, Y=Y, step_scaling=step_scaling)
                 if verbose and i % 10 == 0:
                     print("i: {}, cost: {}".format(i, cost))
@@ -265,7 +311,7 @@ class Graph_MCMC:
             classifier.sgld_initialise()
 
             # mcmc_equilibrate(self.state, force_niter=num_iter, callback=sgld_iterate, verbose=verbose)
-            for i in range(0, num_iter):
+            for i in tqdm(range(0, num_iter)):
                 dS, nattempts, nmoves = self.state.multiflip_mcmc_sweep(niter=1, psplit=0)
                 cost = sgld_iterate(self.state)
                 if verbose and i % 10 == 0:
