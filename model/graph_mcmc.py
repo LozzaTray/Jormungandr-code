@@ -52,11 +52,13 @@ class Graph_MCMC:
     def read_from_gt(self, dataset_name):
         self.G = data[dataset_name]
         self.G.set_directed(False)
+        print("Vertex props: " + str(self.G.vertex_properties.keys()))
 
     
     def read_from_ns(self, dataset_name):
         self.G = ns[dataset_name]
         self.G.set_directed(False)
+        print("Vertex props: " + str(list(self.G.vertex_properties.keys())))
 
 
     def filter_out_low_degree(self, min_degree):

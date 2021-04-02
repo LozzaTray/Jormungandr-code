@@ -2,16 +2,17 @@ from model.graph_mcmc import Graph_MCMC
 
 
 def run():
-    dataset = "cond-mat"
+    dataset = "webkb/webkb_washington_cocite"
 
     graph = Graph_MCMC()
-    graph.read_from_gt(dataset)
+    graph.read_from_ns(dataset)
     graph.remove_property("_pos")
+    graph.remove_property("name")
     graph.convert_props_to_flags()
 
     graph.partition(B_min=2, B_max=10)
     graph.mcmc(1000)
-    graph.draw(dataset + ".png")
+    graph.draw("webkb.png")
 
     classifier = graph.sample_classifier_marginals(2500, step_scaling=0.01)
 
