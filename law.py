@@ -8,6 +8,8 @@ def run():
     #graph.read_from_gt("cond-mat")
     graph.read_from_ns(dataset)
     graph.remove_property("_pos")
+    graph.remove_property("name")
+    graph.remove_property("nodeAge")
     graph.convert_props_to_flags()
     #graph.filter_edges("layer", 3) # 1: coworkers, 2: friendship, 3: advice
 

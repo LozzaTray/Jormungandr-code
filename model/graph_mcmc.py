@@ -17,6 +17,7 @@ output_dir = os.path.join(curr_dir, "..", "output")
 
 class Graph_MCMC:
 
+
     def __init__(self):
         """Initialises empty graph"""
         self.G = GT_Graph(directed=False)
@@ -26,6 +27,11 @@ class Graph_MCMC:
         self.vertex_block_counts = None
         self.B_max = None
         self.relabelled_vertices = None
+
+        # treat prior on b as uniform
+        self.entropy_args = {"partition_dl": False}
+        self.mcmc_args = {"entropy_args": self.entropy_args}
+
 
 
     def read_from_edges(self, edges):
@@ -179,7 +185,7 @@ class Graph_MCMC:
         returns partition array
         """
         print("Performing inference...")
-        self.state = minimize_blockmodel_dl(self.G, B_min=B_min, B_max=B_max, deg_corr=degree_corrected, verbose=True)
+        self.state = minimize_blockmodel_dl(self.G, B_min=B_min, B_max=B_max, deg_corr=degree_corrected, mcmc_args=self.mcmc_args, verbose=True)
         print("Done")
         return self.state.get_blocks()
 
@@ -195,7 +201,7 @@ class Graph_MCMC:
             bs.append(s.b.a.copy())
 
         for i in tqdm(range(0, num_iter)):
-                dS, nattempts, nmoves = self.state.mcmc_sweep(niter=1, d=0.00)
+                dS, nattempts, nmoves = self.state.mcmc_sweep(niter=1, d=0.00, entropy_args=self.entropy_args)
                 collect_partitions(self.state)
                 if verbose and i % 10 == 0:
                     print("i: {}, dS: {}, nattempts: {}, nmoves: {}".format(i, dS, nattempts, nmoves))

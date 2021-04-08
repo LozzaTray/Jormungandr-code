@@ -12,10 +12,10 @@ def run():
     graph.add_ego_node()
 
     graph.partition(B_min=4, B_max=20)
-    graph.mcmc(1000, verbose=True)
+    graph.mcmc(1000, verbose=False)
     graph.draw("maier-fb.png")
 
-    classifier = graph.sample_classifier_marginals(2500, step_scaling=0.01, verbose=True)
+    classifier = graph.sample_classifier_marginals(2500, step_scaling=0.01, verbose=False)
 
     names = graph.get_feature_names()
 
