@@ -332,7 +332,7 @@ class SoftmaxNeuralNet:
         plt.show()
 
 
-    def plot_sampled_weights(self, feature_names, std_dev_multiplier=1):
+    def plot_sampled_weights(self, feature_names, std_dev_multiplier=1, width_multiplier=1):
 
         D = self.layers_size[0]
         B = self.layers_size[1]
@@ -343,7 +343,7 @@ class SoftmaxNeuralNet:
 
         self.compute_mean_variances()
 
-        width = 0.4 / (D + 1)
+        width = width_multiplier * 0.4 / (D + 1)
         midpoint = D / 2.0
 
         discarded_features = []
@@ -353,7 +353,13 @@ class SoftmaxNeuralNet:
                 print("Discarding feature {}: {}".format(d, feature_names[d]))
 
 
+
+        b_counter = np.zeros(B)
         for d in range(0, D + 1):
+            kept_x = []
+            kept_height = []
+            kept_bottom = []
+
             if d in discarded_features:
                 pass
             else:
@@ -366,9 +372,15 @@ class SoftmaxNeuralNet:
                 for b in range(0, B):
                     if bottom[b] < 0 and bottom[b] + height[b] > 0:
                         height[b] = 0 #unclutter classifier
+                    else:
+                        kept_x.append(b + b_counter[b] * width)
+                        kept_height.append(height[b])
+                        kept_bottom.append(bottom[b])
+                        b_counter[b] += 1
 
                 x = np.arange(0, B, 1) + (width * (d - midpoint))
                 plt.bar(x=x, height=height, bottom=bottom, width=width, label=feature_names[d])
+                #plt.bar(x=kept_x, height=kept_height, bottom=kept_bottom, width=width, label=feature_names[d])
 
         block_centres = np.arange(0, B, 1)
         block_names = [str(num) for num in range(0, B)]

@@ -15,12 +15,13 @@ def run():
     graph.mcmc(1000, verbose=False)
     graph.draw("maier-fb.png")
 
+    graph.plot_posterior_props()
     classifier = graph.sample_classifier_marginals(2500, step_scaling=0.01, verbose=False)
 
     names = graph.get_feature_names()
 
     classifier.sgld_sample_thinning()
-    classifier.plot_sampled_weights(names, std_dev_multiplier=2)
+    classifier.plot_sampled_weights(names, std_dev_multiplier=2, width_multiplier=1)
     classifier.plot_sample_histogram()
     classifier.plot_sample_history()
 

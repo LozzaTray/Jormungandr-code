@@ -179,6 +179,7 @@ class Graph_MCMC:
         
             self.remove_property(prop_name)
 
+
     def partition(self, B_min=None, B_max=None, degree_corrected=True):
         """
         Performs MCMC algorithm to minimise description length (DL)
@@ -210,7 +211,7 @@ class Graph_MCMC:
         # BUG: parameter not passed through correctly
 
         # Disambiguate partitions and obtain marginals
-        pmode = PartitionModeState(bs, converge=True)
+        pmode = PartitionModeState(bs, converge=True, relabel=True)
         pv = pmode.get_marginal(self.G)
 
         # Now the node marginals are stored in property map pv. We can
@@ -239,6 +240,13 @@ class Graph_MCMC:
 
             posterior_probs[idx, 0:b] = probs[:]
 
+        # block_counts = np.sum(posterior_probs, axis=0)
+        # indices = np.argsort(block_counts)[::-1]
+
+        # sorted_posterior_probs = np.zeros((N, B))
+        # sorted_posterior_probs[:, :] = posterior_probs[:, indices]
+
+        # return sorted_posterior_probs
         return posterior_probs
 
     
@@ -416,6 +424,20 @@ class Graph_MCMC:
             plt.show()
         else:
             print("No state partition detected >> cannot draw prop fractions")
+
+
+    def plot_posterior_props(self):
+        if self.vertex_block_counts is not None:
+            posterior = self.generate_posterior()
+            block_counts = np.sum(posterior, axis=0)
+            x = np.arange(0, len(block_counts), 1)
+            plt.bar(x, block_counts)
+            plt.title("Block Membership Counts")
+            plt.ylabel("Cumulative probability sum")
+            plt.xlabel("Block index")
+            plt.show()
+        else:
+            raise Exception("Vertex block counts not initialised")
 
 
     def gen_output_path(self, filename):
