@@ -5,6 +5,7 @@ import matplotlib.pylab as plt
 from sklearn.preprocessing import OneHotEncoder
 from scipy.stats import norm
 import math
+from inference.store import Store
 
 
 class SoftmaxNeuralNet:
@@ -43,26 +44,22 @@ class SoftmaxNeuralNet:
 
 
     def _forward(self, X):
-        store = {}
+        store = Store()
 
         A = X.T
+        store.set_A(A, 0)
         ## hidden sigmoid layers
-        for l in range(self.L - 1):
-            Z = self.parameters["W" + str(l + 1)].dot(A) + \
-                self.parameters["b" + str(l + 1)]
-            A = self._sigmoid(Z)
-            store["A" + str(l + 1)] = A
-            store["W" + str(l + 1)] = self.parameters["W" + str(l + 1)]
-            store["Z" + str(l + 1)] = Z
-
-        ## final softmax layer
-        Z = self.parameters["W" + str(self.L)].dot(A) + \
-            self.parameters["b" + str(self.L)]
-        A = self._softmax(Z)
-        store["A" + str(self.L)] = A
-        store["W" + str(self.L)] = self.parameters["W" + str(self.L)]
-        store["b" + str(self.L)] = self.parameters["b" + str(self.L)]
-        store["Z" + str(self.L)] = Z
+        for l in range(1, self.L + 1):
+            Z = self.parameters["W" + str(l)].dot(A) + \
+                self.parameters["b" + str(l)]
+            if l < self.L:
+                A = self._sigmoid(Z)
+            else:
+                A = self._softmax(Z) # final softmax layer 
+            store.set_A(A, l)
+            store.set_W(self.parameters["W" + str(l)], l)
+            store.set_b(self.parameters["b" + str(l)], l)
+            store.set_Z(Z, l)
 
         return A, store
 
@@ -76,24 +73,22 @@ class SoftmaxNeuralNet:
 
         derivatives = {}
 
-        store["A0"] = X.T
-
-        A = store["A" + str(self.L)]
+        A = store.get_A(self.L)
         dZ = A - Y.T
 
-        dW = dZ.dot(store["A" + str(self.L - 1)].T) / self.n
+        dW = dZ.dot(store.get_A(self.L - 1).T) / self.n
         db = np.sum(dZ, axis=1, keepdims=True) / self.n
-        dAPrev = store["W" + str(self.L)].T.dot(dZ)
+        dAPrev = store.get_W(self.L).T.dot(dZ)
 
         derivatives["dW" + str(self.L)] = dW
         derivatives["db" + str(self.L)] = db
 
         for l in range(self.L - 1, 0, -1):
-            dZ = dAPrev * self._sigmoid_derivative(store["Z" + str(l)])
-            dW = 1. / self.n * dZ.dot(store["A" + str(l - 1)].T)
+            dZ = dAPrev * self._sigmoid_derivative(store.get_Z(l))
+            dW = 1. / self.n * dZ.dot(store.get_A(l-1).T)
             db = 1. / self.n * np.sum(dZ, axis=1, keepdims=True)
             if l > 1:
-                dAPrev = store["W" + str(l)].T.dot(dZ)
+                dAPrev = store.get_W(l).T.dot(dZ)
 
             derivatives["dW" + str(l)] = dW
             derivatives["db" + str(l)] = db
@@ -105,8 +100,8 @@ class SoftmaxNeuralNet:
         derivatives = {}
 
         for l in range(1, self.L + 1):
-            derivatives["dW" + str(l)] = - store["W" + str(l)] / self.sigma
-            derivatives["db" + str(l)] = - store["b" + str(l)] / self.sigma
+            derivatives["dW" + str(l)] = - store.get_W(l) / self.sigma
+            derivatives["db" + str(l)] = - store.get_b(l) / self.sigma
 
         return derivatives
 
@@ -126,8 +121,8 @@ class SoftmaxNeuralNet:
         log_posterior = np.mean(Y * np.log(A.T + 1e-8)) # -ve of cross-entropy
         log_prior = 0
         for l in range(1, self.L+1):
-            weight_term = norm.logpdf(store["W" + str(l)], scale=self.sigma).sum()
-            bias_term = norm.logpdf(store["b" + str(l)], scale=self.sigma).sum()
+            weight_term = norm.logpdf(store.get_W(l), scale=self.sigma).sum()
+            bias_term = norm.logpdf(store.get_b(l), scale=self.sigma).sum()
             log_prior = log_prior + weight_term + bias_term 
 
 
@@ -145,13 +140,10 @@ class SoftmaxNeuralNet:
             self.bias_history["b" + str(l)] = []
 
 
-    def transition_log_pdf_diff(store_0, store_1, derivatives_0, derivatives_1, step_size):
+    def transition_log_pdf_diff(store_0, store_1, step_size):
         distances = []
         for l in range(1, L+1):
-            fwd_weight_centre = store_0["W" + str(l)] - step_size * derivatives_0["dW" + str(l)] / 2
-            fwd_weight_diff = store_1["W" + str(l)] - forwards_centre
-            
-            fwd_bias_centre = store_0["b" + str(l)] - step_size
+            raise NotImplementedError
 
 
 
@@ -202,9 +194,9 @@ class SoftmaxNeuralNet:
 
             if accepted:
                 for l in range(1, self.L+1):
+                    pass
 
             
-
             if t % 10 == 0 and verbose:
                 print(cost)
 
