@@ -3,6 +3,7 @@
 import numpy as np
 import matplotlib.pylab as plt
 from sklearn.preprocessing import OneHotEncoder
+from scipy.stats import norm
 import math
 
 
@@ -121,10 +122,16 @@ class SoftmaxNeuralNet:
         return log_post_derivatives
 
 
-    def cross_entropy_loss(self, X, Y):
-        A, _store = self._forward(X)
-        cost = -np.mean(Y * np.log(A.T + 1e-8))
-        return cost
+    def _log_target(self, store, A, Y):
+        log_posterior = np.mean(Y * np.log(A.T + 1e-8)) # -ve of cross-entropy
+        log_prior = 0
+        for l in range(1, self.L+1):
+            weight_term = norm.logpdf(store["W" + str(l)], scale=self.sigma).sum()
+            bias_term = norm.logpdf(store["b" + str(l)], scale=self.sigma).sum()
+            log_prior = log_prior + weight_term + bias_term 
+
+
+        return - (log_posterior + log_prior)
 
 
     def sgld_initialise(self):
@@ -136,6 +143,70 @@ class SoftmaxNeuralNet:
         for l in range(1, len(self.layers_size)):
             self.weight_history["W" + str(l)] = []
             self.bias_history["b" + str(l)] = []
+
+
+    def transition_log_pdf_diff(store_0, store_1, derivatives_0, derivatives_1, step_size):
+        distances = []
+        for l in range(1, L+1):
+            fwd_weight_centre = store_0["W" + str(l)] - step_size * derivatives_0["dW" + str(l)] / 2
+            fwd_weight_diff = store_1["W" + str(l)] - forwards_centre
+            
+            fwd_bias_centre = store_0["b" + str(l)] - step_size
+
+
+
+    
+    def mala_perform(self, X, Y, num_iter=1000, step_scaling=1, verbose=False):
+        """Performs Metropolis-Adjusted Langevin Algorithm
+        
+            Parameters:
+                X (int[][]): n x D matrix of feature flags
+                Y (int[][]): n x B matrix os posterior probs
+                num_iter (int): number of iterations to run
+            Returns:
+                None
+        """
+        self.n = X.shape[0]
+
+        A, store = self._forward(X)
+        cost = -np.mean(Y * np.log(A.T + 1e-8))
+        derivatives = self._backward_log_posterior_deriv(X, Y, store)
+
+
+        for t in range(0, num_iter):
+            step_size = step_scaling * self.anneal_step_size(t)
+
+            A, store = self._forward(X)
+            U = self._log_target(store, A, Y)
+            derivatives = self._backward_log_posterior_deriv(X, Y, store)
+
+            for l in range(1, self.L + 1):
+                weight_shape = self.parameters["W" + str(l)].shape
+                weight_noise = np.sqrt(step_size) * np.random.randn(*weight_shape) # * unpacks tuple into arg list
+                new_weight = self.parameters["W" + str(l)] - step_size * derivatives["dW" + str(l)] / 2 + weight_noise
+
+                self.parameters["W" + str(l)] = new_weight
+                self.weight_history["W" + str(l)].append(new_weight)
+
+                bias_shape = self.parameters["b" + str(l)].shape
+                bias_noise = np.sqrt(step_size) * np.random.randn(*bias_shape)
+                new_bias = self.parameters["b" + str(l)] - step_size * derivatives["db" + str(l)] / 2 + bias_noise
+
+                self.parameters["b" + str(l)] = new_bias
+                self.bias_history["b" + str(l)].append(new_bias)
+
+            new_A, new_store = self._forward(X)
+            new_U = self._log_target(new_store, new_A, Y)
+
+            accepted = True
+
+            if accepted:
+                for l in range(1, self.L+1):
+
+            
+
+            if t % 10 == 0 and verbose:
+                print(cost)
 
     
     def sgld_iterate(self, X, Y, step_scaling=1):
@@ -332,10 +403,23 @@ class SoftmaxNeuralNet:
         plt.show()
 
 
-    def plot_sampled_weights(self, feature_names, std_dev_multiplier=1, width_multiplier=1):
+    def plot_sampled_weights(self, feature_names, std_dev_multiplier=1, B_range=None):
+        """Plot the sampled weights.
+        
+            Parameters:
+                feature_names (str[]): names of each feature
+                std_dev_multiplier (float): how many std devs to consider when disregarding
+                B_range ((int, int)): tuple of ints specifying lower and upper B cutoff
+
+            Returns:
+                None. Just plot the samples
+        """
 
         D = self.layers_size[0]
-        B = self.layers_size[1]
+        if B_range is None:
+            B_range = (0, self.layers_size[1])
+
+        B = B_range[1] - B_range[0]
 
         assert len(feature_names) == D
 
@@ -343,7 +427,7 @@ class SoftmaxNeuralNet:
 
         self.compute_mean_variances()
 
-        width = width_multiplier * 0.4 / (D + 1)
+        width = 0.4 / (D + 1)
         midpoint = D / 2.0
 
         discarded_features = []
@@ -363,13 +447,13 @@ class SoftmaxNeuralNet:
             if d in discarded_features:
                 pass
             else:
-                mean = self.param_means[:, d]
-                std_dev = self.param_std_devs[:, d]
+                mean = self.param_means[:, d][B_range[0]: B_range[1]]
+                std_dev = self.param_std_devs[:, d][B_range[0]: B_range[1]]
 
                 height = 2 * std_dev * std_dev_multiplier
                 bottom = mean - std_dev
 
-                for b in range(0, B):
+                for b in range(B_range[0], B_range[1]):
                     if bottom[b] < 0 and bottom[b] + height[b] > 0:
                         height[b] = 0 #unclutter classifier
                     else:
