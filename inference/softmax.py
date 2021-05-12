@@ -10,12 +10,11 @@ from inference.store import Store
 
 class SoftmaxNeuralNet:
 
-
     def __init__(self, layers_size, sigma=1, a=250, b=1000, gamma=0.8):
         """Initialise Neural Network"""
         self.layers_size = layers_size
-        self.parameters = {}
-        self.L = len(self.layers_size) - 1 # number of activation layers
+        self.parameters = Store()
+        self.L = len(self.layers_size) - 1  # number of activation layers
         self.n = 0
         self.costs = []
         self.sigma = 1
@@ -24,50 +23,48 @@ class SoftmaxNeuralNet:
         self.gamma = gamma
         self._initialize_parameters()
 
-
     def _sigmoid(self, Z):
         return 1 / (1 + np.exp(-Z))
 
-
     def _softmax(self, Z):
-        expZ = np.exp(Z - np.max(Z, axis=0, keepdims=True)) # keep numerically stable / avoid overflow
+        # keep numerically stable / avoid overflow
+        expZ = np.exp(Z - np.max(Z, axis=0, keepdims=True))
         expZ = np.nan_to_num(expZ)
         return expZ / expZ.sum(axis=0, keepdims=True)
-
 
     def _initialize_parameters(self):
 
         for l in range(1, len(self.layers_size)):
-            self.parameters["W" + str(l)] = np.random.randn(self.layers_size[l], self.layers_size[l - 1]) / np.sqrt(
-                self.layers_size[l - 1])
-            self.parameters["b" + str(l)] = np.zeros((self.layers_size[l], 1))
+            W = np.random.randn(self.layers_size[l], self.layers_size[l - 1]) / np.sqrt(self.layers_size[l - 1])
+            b = np.zeros((self.layers_size[l], 1))
 
+            self.parameters.set_W(W, l)
+            self.parameters.set_b(b, l)
 
     def _forward(self, X):
         store = Store()
 
         A = X.T
         store.set_A(A, 0)
-        ## hidden sigmoid layers
+        # hidden sigmoid layers
         for l in range(1, self.L + 1):
-            Z = self.parameters["W" + str(l)].dot(A) + \
-                self.parameters["b" + str(l)]
+            Z = self.parameters.get_W(l).dot(A) + self.parameters.get_b(l)
+
             if l < self.L:
                 A = self._sigmoid(Z)
             else:
-                A = self._softmax(Z) # final softmax layer 
+                A = self._softmax(Z)  # final softmax layer
+
             store.set_A(A, l)
-            store.set_W(self.parameters["W" + str(l)], l)
-            store.set_b(self.parameters["b" + str(l)], l)
+            store.set_W(self.parameters.get_W(l), l)
+            store.set_b(self.parameters.get_b(l), l)
             store.set_Z(Z, l)
 
         return A, store
 
-
     def _sigmoid_derivative(self, Z):
         s = 1 / (1 + np.exp(-Z))
         return s * (1 - s)
-
 
     def _backward_cross_entropy_deriv(self, X, Y, store):
 
@@ -95,7 +92,6 @@ class SoftmaxNeuralNet:
 
         return derivatives
 
-
     def _log_prior_derivative(self, store):
         derivatives = {}
 
@@ -105,29 +101,26 @@ class SoftmaxNeuralNet:
 
         return derivatives
 
-    
     def _backward_log_posterior_deriv(self, X, Y, store):
         log_lik_derivatives = self._backward_cross_entropy_deriv(X, Y, store)
         log_prior_derivatives = self._log_prior_derivative(store)
 
         log_post_derivatives = {}
         for key in log_lik_derivatives:
-            log_post_derivatives[key] = self.n * log_lik_derivatives[key] - log_prior_derivatives[key]
+            log_post_derivatives[key] = self.n * \
+                log_lik_derivatives[key] - log_prior_derivatives[key]
 
         return log_post_derivatives
 
-
     def _log_target(self, store, A, Y):
-        log_posterior = np.mean(Y * np.log(A.T + 1e-8)) # -ve of cross-entropy
+        log_posterior = np.mean(Y * np.log(A.T + 1e-8))  # -ve of cross-entropy
         log_prior = 0
         for l in range(1, self.L+1):
             weight_term = norm.logpdf(store.get_W(l), scale=self.sigma).sum()
             bias_term = norm.logpdf(store.get_b(l), scale=self.sigma).sum()
-            log_prior = log_prior + weight_term + bias_term 
-
+            log_prior = log_prior + weight_term + bias_term
 
         return - (log_posterior + log_prior)
-
 
     def sgld_initialise(self):
         """Initilaise SGLD - Stochastic Gradient Langevin Diffusion for MCMC sampling form posterior"""
@@ -139,18 +132,14 @@ class SoftmaxNeuralNet:
             self.weight_history["W" + str(l)] = []
             self.bias_history["b" + str(l)] = []
 
-
     def transition_log_pdf_diff(store_0, store_1, step_size):
         distances = []
         for l in range(1, L+1):
             raise NotImplementedError
 
-
-
-    
     def mala_perform(self, X, Y, num_iter=1000, step_scaling=1, verbose=False):
         """Performs Metropolis-Adjusted Langevin Algorithm
-        
+
             Parameters:
                 X (int[][]): n x D matrix of feature flags
                 Y (int[][]): n x B matrix os posterior probs
@@ -164,7 +153,6 @@ class SoftmaxNeuralNet:
         cost = -np.mean(Y * np.log(A.T + 1e-8))
         derivatives = self._backward_log_posterior_deriv(X, Y, store)
 
-
         for t in range(0, num_iter):
             step_size = step_scaling * self.anneal_step_size(t)
 
@@ -173,19 +161,8 @@ class SoftmaxNeuralNet:
             derivatives = self._backward_log_posterior_deriv(X, Y, store)
 
             for l in range(1, self.L + 1):
-                weight_shape = self.parameters["W" + str(l)].shape
-                weight_noise = np.sqrt(step_size) * np.random.randn(*weight_shape) # * unpacks tuple into arg list
-                new_weight = self.parameters["W" + str(l)] - step_size * derivatives["dW" + str(l)] / 2 + weight_noise
-
-                self.parameters["W" + str(l)] = new_weight
-                self.weight_history["W" + str(l)].append(new_weight)
-
-                bias_shape = self.parameters["b" + str(l)].shape
-                bias_noise = np.sqrt(step_size) * np.random.randn(*bias_shape)
-                new_bias = self.parameters["b" + str(l)] - step_size * derivatives["db" + str(l)] / 2 + bias_noise
-
-                self.parameters["b" + str(l)] = new_bias
-                self.bias_history["b" + str(l)].append(new_bias)
+                # simulate
+                pass
 
             new_A, new_store = self._forward(X)
             new_U = self._log_target(new_store, new_A, Y)
@@ -196,11 +173,9 @@ class SoftmaxNeuralNet:
                 for l in range(1, self.L+1):
                     pass
 
-            
             if t % 10 == 0 and verbose:
                 print(cost)
 
-    
     def sgld_iterate(self, X, Y, step_scaling=1):
         """Perform one iteration of sgld, returns previous cost"""
         self.n = X.shape[0]
@@ -211,25 +186,26 @@ class SoftmaxNeuralNet:
         cost = -np.mean(Y * np.log(A.T + 1e-8))
         derivatives = self._backward_log_posterior_deriv(X, Y, store)
 
-
         for l in range(1, self.L + 1):
-            weight_shape = self.parameters["W" + str(l)].shape
-            weight_noise = np.sqrt(step_size) * np.random.randn(*weight_shape) # * unpacks tuple into arg list
-            new_weight = self.parameters["W" + str(l)] - step_size * derivatives["dW" + str(l)] / 2 + weight_noise
+            weight_shape = self.parameters.get_W(l).shape
+            # * unpacks tuple into arg list
+            weight_noise = np.sqrt(step_size) * np.random.randn(*weight_shape)
+            new_weight = self.parameters.get_W(l) - step_size * \
+                derivatives["dW" + str(l)] / 2 + weight_noise
 
-            self.parameters["W" + str(l)] = new_weight
+            self.parameters.set_W(new_weight, l)
             self.weight_history["W" + str(l)].append(new_weight)
 
-            bias_shape = self.parameters["b" + str(l)].shape
+            bias_shape = self.parameters.get_b(l).shape
             bias_noise = np.sqrt(step_size) * np.random.randn(*bias_shape)
-            new_bias = self.parameters["b" + str(l)] - step_size * derivatives["db" + str(l)] / 2 + bias_noise
+            new_bias = self.parameters.get_b(l) - step_size * \
+                derivatives["db" + str(l)] / 2 + bias_noise
 
-            self.parameters["b" + str(l)] = new_bias
+            self.parameters.set_b(new_bias, l)
             self.bias_history["b" + str(l)].append(new_bias)
 
         return cost
 
-    
     def sgld_sample_thinning(self, burn_in_pc=10, thinning_pc=20):
         """discard samples pre burn-in and only select keep thinning_pc of rest"""
         stop = len(self.weight_history["W" + str(self.L)])
@@ -237,13 +213,13 @@ class SoftmaxNeuralNet:
         step = int(100 / thinning_pc)
 
         for l in range(1, self.L + 1):
-            self.weight_history["W" + str(self.L)] = self.weight_history["W" + str(self.L)][start:stop:step]
-            self.bias_history["b" + str(self.L)] = self.bias_history["b" + str(self.L)][start:stop:step]
-
+            self.weight_history["W" + str(self.L)] = self.weight_history["W" +
+                                                                         str(self.L)][start:stop:step]
+            self.bias_history["b" + str(self.L)] = self.bias_history["b" +
+                                                                     str(self.L)][start:stop:step]
 
     def anneal_step_size(self, t):
         return self.a * math.pow(self.b + t, -1 * self.gamma)
-
 
     def fit(self, X, Y, learning_rate=0.01, n_iterations=2500, seed=None, verbose=False):
         """
@@ -271,10 +247,11 @@ class SoftmaxNeuralNet:
             derivatives = self._backward_cross_entropy_deriv(X, Y, store)
 
             for l in range(1, self.L + 1):
-                self.parameters["W" + str(l)] = self.parameters["W" + str(l)] - learning_rate * derivatives[
-                    "dW" + str(l)]
-                self.parameters["b" + str(l)] = self.parameters["b" + str(l)] - learning_rate * derivatives[
-                    "db" + str(l)]
+                W = self.parameters.get_W(l) - learning_rate * derivatives["dW" + str(l)]
+                b = self.parameters.get_b(l) - learning_rate * derivatives["db" + str(l)]
+
+                self.parameters.set_W(W, l)
+                self.parameters.set_b(b, l)
 
             if loop % 100 == 0:
                 print("Cost: ", cost, "Train Accuracy:", self.predict(X, Y))
@@ -282,14 +259,12 @@ class SoftmaxNeuralNet:
             if loop % 10 == 0:
                 self.costs.append(cost)
 
-
     def predict(self, X, Y):
         A, _cache = self._forward(X)
         y_hat = np.argmax(A, axis=0)
         Y = np.argmax(Y, axis=1)
         accuracy = (y_hat == Y).mean()
         return accuracy * 100
-
 
     def compute_mean_variances(self):
         D = self.layers_size[0]
@@ -303,7 +278,7 @@ class SoftmaxNeuralNet:
 
         B = W_history[0].shape[0]
         D = W_history[0].shape[1]
-        n = len(W_history)       
+        n = len(W_history)
 
         assert D == W_history[0].shape[1]
         assert B == W_history[0].shape[0]
@@ -311,12 +286,12 @@ class SoftmaxNeuralNet:
         for d in range(0, D + 1):
             mean = np.zeros(B)
             square = np.zeros(B)
-            
+
             if d == D:
                 for b in b_history:
                     mean[:] += b[:, 0]
                     square[:] += b[:, 0] ** 2
-            
+
             else:
                 for W in W_history:
                     mean[:] += W[:, d]
@@ -333,7 +308,6 @@ class SoftmaxNeuralNet:
         self.param_means = param_means
         self.param_std_devs = param_std_devs
 
-    
     def feature_overlaps_zero(self, feature_index, std_dev_multiplier):
         means = self.param_means[:, feature_index]
         std_devs = self.param_std_devs[:, feature_index]
@@ -349,7 +323,6 @@ class SoftmaxNeuralNet:
 
         return True
 
-    
     def feature_overlaps_zero_for_class(self, feature_index, class_index, std_dev_multiplier):
         mean = self.param_means[class_index, feature_index]
         std_dev = self.param_std_devs[class_index, feature_index]
@@ -361,7 +334,6 @@ class SoftmaxNeuralNet:
         else:
             return False
 
-
     def plot_cost(self):
         plt.figure()
         plt.plot(np.arange(len(self.costs)), self.costs)
@@ -369,12 +341,11 @@ class SoftmaxNeuralNet:
         plt.ylabel("cost")
         plt.show()
 
-    
     def plot_final_weights(self, feature_names):
-        W = self.parameters["W" + str(self.L)]
+        W = self.parameters.get_W(self.L)
 
         B = W.shape[0]
-        D = W.shape[1]        
+        D = W.shape[1]
 
         assert len(feature_names) == D
 
@@ -387,17 +358,16 @@ class SoftmaxNeuralNet:
 
             x = np.array(range(0, B)) + (width * d)
             plt.bar(x, y, width=width, label=feature_names[d])
-        
+
         plt.title("ML softmax fit")
         plt.xlabel("Class label")
         plt.ylabel("Weight")
         plt.legend()
         plt.show()
 
-
     def plot_sampled_weights(self, feature_names, std_dev_multiplier=1, B_range=None):
         """Plot the sampled weights.
-        
+
             Parameters:
                 feature_names (str[]): names of each feature
                 std_dev_multiplier (float): how many std devs to consider when disregarding
@@ -428,8 +398,6 @@ class SoftmaxNeuralNet:
                 discarded_features.append(d)
                 print("Discarding feature {}: {}".format(d, feature_names[d]))
 
-
-
         b_counter = np.zeros(B)
         for d in range(0, D + 1):
             kept_x = []
@@ -447,7 +415,7 @@ class SoftmaxNeuralNet:
 
                 for b in range(B_range[0], B_range[1]):
                     if bottom[b] < 0 and bottom[b] + height[b] > 0:
-                        height[b] = 0 #unclutter classifier
+                        height[b] = 0  # unclutter classifier
                     else:
                         kept_x.append(b + b_counter[b] * width)
                         kept_height.append(height[b])
@@ -455,12 +423,13 @@ class SoftmaxNeuralNet:
                         b_counter[b] += 1
 
                 x = np.arange(0, B, 1) + (width * (d - midpoint))
-                plt.bar(x=x, height=height, bottom=bottom, width=width, label=feature_names[d])
+                plt.bar(x=x, height=height, bottom=bottom,
+                        width=width, label=feature_names[d])
                 #plt.bar(x=kept_x, height=kept_height, bottom=kept_bottom, width=width, label=feature_names[d])
 
         block_centres = np.arange(0, B, 1)
         block_names = [str(num) for num in range(0, B)]
-        
+
         plt.title("Sampled softmax weightings")
         plt.xlabel("Class label")
         plt.ylabel("Weight mean $\\pm {}\\sigma$".format(std_dev_multiplier))
@@ -469,31 +438,29 @@ class SoftmaxNeuralNet:
         plt.xticks(ticks=block_centres, labels=block_names)
         plt.show()
 
-
     def plot_sample_histogram(self):
         W_history = self.weight_history["W" + str(self.L)]
         n = len(W_history)
-        values = [w[0, 0] for w in W_history]     
+        values = [w[0, 0] for w in W_history]
         plt.hist(values)
-        
+
         plt.title("Weight samples (n={})".format(n))
         plt.xlabel("Value")
         plt.ylabel("Frequency")
         plt.grid()
         plt.show()
 
-    
     def plot_sample_history(self):
         W_history = self.weight_history["W" + str(self.L)]
-        
+
         B = W_history[0].shape[0]
         D = W_history[0].shape[1]
-        n = len(W_history)       
+        n = len(W_history)
 
         for b in range(0, B):
             mean = [np.mean(w[b, :]) for w in W_history]
             plt.plot(mean, label="block-{}".format(b))
-        
+
         plt.title("Sampled softmax weightings")
         plt.xlabel("Sample index")
         plt.ylabel("Weight")
