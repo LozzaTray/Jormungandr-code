@@ -296,7 +296,20 @@ class Graph_MCMC:
 
             return classifier
 
+    def sample_classifier_mala(self, num_iter, step_scaling=1, sigma=1, verbose=False):
+        if self.state is None:
+            print("No state partition detected >> ABORT")
+        else:
+            X = self.generate_feature_matrix()
+            Y = self.generate_posterior()
 
+            D = X.shape[1]
+            B = Y.shape[1]
+
+            classifier = SoftmaxNeuralNet(layers_size=[D, B], sigma=sigma)
+            classifier.perform_mala(X, Y, step_scaling=step_scaling, num_iter=num_iter, verbose=verbose)
+
+            return classifier
     
     def sample_classifier_mcmc(self, num_iter, verbose=False):
         if self.state is None:

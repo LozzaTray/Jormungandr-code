@@ -1,14 +1,35 @@
+import numpy as np
+from scipy.stats import norm
+
+
 class Store:
 
-    def __init__(self):
-        self.W = {}
-        self.b = {}
-        self.dW = {}
-        self.db = {}
-        self.A = {}
-        self.Z = {}
+    def __init__(self, W={}, b={}, dW={}, db={}, A={}, Z={}, U=None):
+        self.W = W
+        self.b = b
+        self.dW = dW
+        self.db = db
+        self.A = A
+        self.Z = Z
+        self.U = U
+
+    def shallow_copy(self):
+        """Creates a new store object with W, b and U copied through"""
+        new_store = Store(self.W.copy(), self.b.copy())
+        new_store.set_U(self.U)
+        return new_store
+
+    def full_copy(self):
+        """Creates a new store object with all props copied through"""
+        new_store = Store(
+            self.W.copy(), self.b.copy(), self.dW.copy(),
+            self.db.copy(), self.A.copy(), self.Z.copy(),
+            self.U
+        )
+        return new_store
 
     # weight matrices
+
     def get_W(self, l):
         return self.W[l]
 
@@ -49,3 +70,91 @@ class Store:
 
     def set_Z(self, Z_instance, l):
         self.Z[l] = Z_instance
+
+    # -ve log-target
+    def get_U(self):
+        return self.U
+
+    def set_U(self, U):
+        self.U = U
+
+    # utility functions
+    def descend_gradient(self, step_size):
+        """
+        W and b params updated once in direction of decreasing gradient
+
+            Params:
+                step_size (float): step_size multiplier
+
+            Returns:
+                None: results stored in place
+        """
+
+        for l in self.W.keys():
+            self.W[l] = self.W[l] - step_size * self.dW[l]
+            self.b[l] = self.b[l] - step_size * self.db[l]
+
+    def add_gaussian_noise(self, std_dev):
+        """
+        adds gaussian noise to each element of W and b
+
+            Params:
+                std_dev (float): standard deviation of noise
+
+            Returns:
+                None: results stored in place
+        """
+
+        for l in self.W.keys():
+            W = self.W[l]
+            b = self.b[l]
+
+            self.W[l] = W + std_dev * np.random.randn(*W.shape)
+            self.b[l] = b + std_dev * np.random.randn(*b.shape)
+
+
+    def langevin_iterate(self, h):
+        """
+        Performs one iteration of the langevin diffusion
+            
+            Parameters:
+                h (float): step_size
+
+            Returns:
+                None: in place update of W and b
+                
+        """
+        self.descend_gradient(step_size=h)
+        self.add_gaussian_noise(std_dev=np.sqrt(2*h))
+
+    
+def compute_log_acceptance_prob(initial, final, h):
+    final_mean = initial.full_copy()
+    final_mean.descend_gradient(step_size=h)
+
+    initial_mean = final.full_copy()
+    initial_mean.descend_gradient(step_size=h)
+
+    numerator = - final.get_U() + log_prob_transition(initial_mean, initial)
+    denominator = - initial.get_U() + log_prob_transition(final_mean, final)
+
+    return min(numerator - denominator, 0)
+
+
+def log_prob_transition(initial, final):
+    cum_sum = 0
+    for l in initial.W.keys():
+        W_initial = initial.get_W(l)
+        W_final = final.get_W(l)
+
+        b_initial = initial.get_b(l)
+        b_final = final.get_b(l)
+
+        cum_sum += norm.logpdf(W_final - W_initial).sum()
+        cum_sum += norm.logpdf(b_final - b_initial).sum()
+
+    return cum_sum
+
+
+
+

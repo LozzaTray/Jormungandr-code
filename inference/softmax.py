@@ -5,7 +5,8 @@ import matplotlib.pylab as plt
 from sklearn.preprocessing import OneHotEncoder
 from scipy.stats import norm
 import math
-from inference.store import Store
+from inference.store import Store, compute_log_acceptance_prob
+from tqdm import tqdm
 
 
 class SoftmaxNeuralNet:
@@ -22,6 +23,7 @@ class SoftmaxNeuralNet:
         self.b = b
         self.gamma = gamma
         self._initialize_parameters()
+        self.store_history = []
 
     def _sigmoid(self, Z):
         return 1 / (1 + np.exp(-Z))
@@ -35,20 +37,19 @@ class SoftmaxNeuralNet:
     def _initialize_parameters(self):
 
         for l in range(1, len(self.layers_size)):
-            W = np.random.randn(self.layers_size[l], self.layers_size[l - 1]) / np.sqrt(self.layers_size[l - 1])
+            W = np.random.randn(
+                self.layers_size[l], self.layers_size[l - 1]) / np.sqrt(self.layers_size[l - 1])
             b = np.zeros((self.layers_size[l], 1))
 
             self.parameters.set_W(W, l)
             self.parameters.set_b(b, l)
 
-    def _forward(self, X):
-        store = Store()
-
+    def _forward(self, X, store):
         A = X.T
         store.set_A(A, 0)
         # hidden sigmoid layers
         for l in range(1, self.L + 1):
-            Z = self.parameters.get_W(l).dot(A) + self.parameters.get_b(l)
+            Z = store.get_W(l).dot(A) + store.get_b(l)
 
             if l < self.L:
                 A = self._sigmoid(Z)
@@ -56,19 +57,25 @@ class SoftmaxNeuralNet:
                 A = self._softmax(Z)  # final softmax layer
 
             store.set_A(A, l)
-            store.set_W(self.parameters.get_W(l), l)
-            store.set_b(self.parameters.get_b(l), l)
             store.set_Z(Z, l)
 
-        return A, store
+        return A
 
     def _sigmoid_derivative(self, Z):
         s = 1 / (1 + np.exp(-Z))
         return s * (1 - s)
 
     def _backward_cross_entropy_deriv(self, X, Y, store):
+        """performs backwards algorithm on store object in place
 
-        derivatives = {}
+            Parameters:
+                X: input matrix for training
+                Y: training target distribution
+                store: store object with forward results
+
+            Returns: 
+                None - derivs added to store object
+        """
 
         A = store.get_A(self.L)
         dZ = A - Y.T
@@ -77,67 +84,61 @@ class SoftmaxNeuralNet:
         db = np.sum(dZ, axis=1, keepdims=True) / self.n
         dAPrev = store.get_W(self.L).T.dot(dZ)
 
-        derivatives["dW" + str(self.L)] = dW
-        derivatives["db" + str(self.L)] = db
+        store.set_dW(dW, self.L)
+        store.set_db(db, self.L)
 
         for l in range(self.L - 1, 0, -1):
             dZ = dAPrev * self._sigmoid_derivative(store.get_Z(l))
-            dW = 1. / self.n * dZ.dot(store.get_A(l-1).T)
-            db = 1. / self.n * np.sum(dZ, axis=1, keepdims=True)
+            dW = dZ.dot(store.get_A(l-1).T)
+            db = np.sum(dZ, axis=1, keepdims=True)
             if l > 1:
                 dAPrev = store.get_W(l).T.dot(dZ)
 
-            derivatives["dW" + str(l)] = dW
-            derivatives["db" + str(l)] = db
+            store.set_dW(dW, l)
+            store.set_db(db, l)
 
-        return derivatives
+    def _compute_grad_U(self, X, Y, store):
+        """Computes derivatives of U w.r.t params W and b
 
-    def _log_prior_derivative(self, store):
-        derivatives = {}
+            Parameters:
+                X: input matrix for training
+                Y: training target distribution
+                store: store object with forward results
 
-        for l in range(1, self.L + 1):
-            derivatives["dW" + str(l)] = - store.get_W(l) / self.sigma
-            derivatives["db" + str(l)] = - store.get_b(l) / self.sigma
+            Returns: 
+                None - derivs added to store object
+        """
 
-        return derivatives
+        # first compute grad log-likelihood term
+        self._backward_cross_entropy_deriv(X, Y, store)
 
-    def _backward_log_posterior_deriv(self, X, Y, store):
-        log_lik_derivatives = self._backward_cross_entropy_deriv(X, Y, store)
-        log_prior_derivatives = self._log_prior_derivative(store)
+        for l in range(1, self.L+1):
+            dW_log_prior = - store.get_W(l) / (self.sigma ** 2)
+            db_log_prior = - store.get_b(l) / (self.sigma ** 2)
 
-        log_post_derivatives = {}
-        for key in log_lik_derivatives:
-            log_post_derivatives[key] = self.n * \
-                log_lik_derivatives[key] - log_prior_derivatives[key]
+            dW = store.get_dW(l) - dW_log_prior
+            db = store.get_db(l) - db_log_prior
 
-        return log_post_derivatives
+            store.set_dW(dW, l)
+            store.set_db(db, l)
 
-    def _log_target(self, store, A, Y):
-        log_posterior = np.mean(Y * np.log(A.T + 1e-8))  # -ve of cross-entropy
+    def _compute_log_target(self, store, A, Y):
+        """Computes -ve log target and places in store"""
+        log_posterior = np.sum(Y * np.log(A.T + 1e-8))  # -ve of cross-entropy
         log_prior = 0
         for l in range(1, self.L+1):
             weight_term = norm.logpdf(store.get_W(l), scale=self.sigma).sum()
             bias_term = norm.logpdf(store.get_b(l), scale=self.sigma).sum()
             log_prior = log_prior + weight_term + bias_term
 
-        return - (log_posterior + log_prior)
+        U = - (log_posterior + log_prior)
+        store.set_U(U)
 
     def sgld_initialise(self):
         """Initilaise SGLD - Stochastic Gradient Langevin Diffusion for MCMC sampling form posterior"""
-        self.weight_history = {}
-        self.bias_history = {}
         self.t = 0
 
-        for l in range(1, len(self.layers_size)):
-            self.weight_history["W" + str(l)] = []
-            self.bias_history["b" + str(l)] = []
-
-    def transition_log_pdf_diff(store_0, store_1, step_size):
-        distances = []
-        for l in range(1, L+1):
-            raise NotImplementedError
-
-    def mala_perform(self, X, Y, num_iter=1000, step_scaling=1, verbose=False):
+    def perform_mala(self, X, Y, num_iter=1000, step_scaling=1, verbose=False):
         """Performs Metropolis-Adjusted Langevin Algorithm
 
             Parameters:
@@ -145,36 +146,48 @@ class SoftmaxNeuralNet:
                 Y (int[][]): n x B matrix os posterior probs
                 num_iter (int): number of iterations to run
             Returns:
-                None
+                acceptance_ratio (float): fraction of samples accepted
+                accuracy (float): final accuracy on training set
         """
         self.n = X.shape[0]
 
-        A, store = self._forward(X)
-        cost = -np.mean(Y * np.log(A.T + 1e-8))
-        derivatives = self._backward_log_posterior_deriv(X, Y, store)
+        initial_store = self.parameters.full_copy()
+        A = self._forward(X, initial_store)
+        self._compute_grad_U(X, Y, initial_store)
+        self._compute_log_target(initial_store, A, Y)
 
-        for t in range(0, num_iter):
-            step_size = step_scaling * self.anneal_step_size(t)
+        num_accepted = 0
 
-            A, store = self._forward(X)
-            U = self._log_target(store, A, Y)
-            derivatives = self._backward_log_posterior_deriv(X, Y, store)
+        for t in tqdm(range(0, num_iter)):
+            h = step_scaling * self.anneal_step_size(t)
 
-            for l in range(1, self.L + 1):
-                # simulate
-                pass
+            final_store = initial_store.full_copy()
+            final_store.langevin_iterate(h)
+            A = self._forward(X, final_store)
+            self._compute_grad_U(X, Y, final_store)
+            self._compute_log_target(final_store, A, Y)
 
-            new_A, new_store = self._forward(X)
-            new_U = self._log_target(new_store, new_A, Y)
+            log_alpha = compute_log_acceptance_prob(initial_store, final_store, h)
 
-            accepted = True
+            rv = np.random.uniform(low=0.0, high=1.0)
+            accepted = (np.log(rv) <= log_alpha)
 
             if accepted:
-                for l in range(1, self.L+1):
-                    pass
+                num_accepted += 1
+                initial_store = final_store
+            else:
+                pass # initial_store not accepted
 
-            if t % 10 == 0 and verbose:
-                print(cost)
+            self.store_history.append(initial_store.shallow_copy())
+
+        acceptance_ratio = num_accepted / num_iter
+        accuracy = self.accuracy(A, Y)
+        if verbose:
+            print("Sample accept ratio: {}%".format(acceptance_ratio * 100))
+            print("Train. set accuracy: {}%".format(accuracy * 100))
+
+        return acceptance_ratio, accuracy
+
 
     def sgld_iterate(self, X, Y, step_scaling=1):
         """Perform one iteration of sgld, returns previous cost"""
@@ -182,41 +195,25 @@ class SoftmaxNeuralNet:
         step_size = step_scaling * self.anneal_step_size(self.t)
         self.t += 1
 
-        A, store = self._forward(X)
-        cost = -np.mean(Y * np.log(A.T + 1e-8))
-        derivatives = self._backward_log_posterior_deriv(X, Y, store)
+        A = self._forward(X, self.parameters)
+        self._compute_grad_U(X, Y, self.parameters)
 
-        for l in range(1, self.L + 1):
-            weight_shape = self.parameters.get_W(l).shape
-            # * unpacks tuple into arg list
-            weight_noise = np.sqrt(step_size) * np.random.randn(*weight_shape)
-            new_weight = self.parameters.get_W(l) - step_size * \
-                derivatives["dW" + str(l)] / 2 + weight_noise
+        self.parameters.descend_gradient(step_size=step_size)
+        self.parameters.add_gaussian_noise(std_dev=np.sqrt(2 * step_size))
 
-            self.parameters.set_W(new_weight, l)
-            self.weight_history["W" + str(l)].append(new_weight)
+        self.store_history.append(self.parameters.shallow_copy())
 
-            bias_shape = self.parameters.get_b(l).shape
-            bias_noise = np.sqrt(step_size) * np.random.randn(*bias_shape)
-            new_bias = self.parameters.get_b(l) - step_size * \
-                derivatives["db" + str(l)] / 2 + bias_noise
-
-            self.parameters.set_b(new_bias, l)
-            self.bias_history["b" + str(l)].append(new_bias)
-
-        return cost
+        A = self._forward(X, self.parameters)
+        self._compute_log_target(self.parameters, A, Y)
+        return self.parameters.get_U()
 
     def sgld_sample_thinning(self, burn_in_pc=10, thinning_pc=20):
         """discard samples pre burn-in and only select keep thinning_pc of rest"""
-        stop = len(self.weight_history["W" + str(self.L)])
+        stop = len(self.store_history)
         start = int(stop * burn_in_pc / 100)
         step = int(100 / thinning_pc)
 
-        for l in range(1, self.L + 1):
-            self.weight_history["W" + str(self.L)] = self.weight_history["W" +
-                                                                         str(self.L)][start:stop:step]
-            self.bias_history["b" + str(self.L)] = self.bias_history["b" +
-                                                                     str(self.L)][start:stop:step]
+        self.store_history = self.store_history[start:stop:step]
 
     def anneal_step_size(self, t):
         return self.a * math.pow(self.b + t, -1 * self.gamma)
@@ -242,29 +239,22 @@ class SoftmaxNeuralNet:
             Y = from_values_to_one_hot(Y)
 
         for loop in range(n_iterations):
-            A, store = self._forward(X)
+            A = self._forward(X, self.parameters)
             cost = -np.mean(Y * np.log(A.T + 1e-8))
-            derivatives = self._backward_cross_entropy_deriv(X, Y, store)
-
-            for l in range(1, self.L + 1):
-                W = self.parameters.get_W(l) - learning_rate * derivatives["dW" + str(l)]
-                b = self.parameters.get_b(l) - learning_rate * derivatives["db" + str(l)]
-
-                self.parameters.set_W(W, l)
-                self.parameters.set_b(b, l)
+            self._backward_cross_entropy_deriv(X, Y, self.parameters)
+            self.parameters.descend_gradient(step_size=learning_rate)
 
             if loop % 100 == 0:
-                print("Cost: ", cost, "Train Accuracy:", self.predict(X, Y))
+                print("Cost: ", cost, "Train Accuracy:", self.accuracy(A, Y) * 100)
 
             if loop % 10 == 0:
                 self.costs.append(cost)
 
-    def predict(self, X, Y):
-        A, _cache = self._forward(X)
+    def accuracy(self, A, Y):
         y_hat = np.argmax(A, axis=0)
         Y = np.argmax(Y, axis=1)
         accuracy = (y_hat == Y).mean()
-        return accuracy * 100
+        return accuracy
 
     def compute_mean_variances(self):
         D = self.layers_size[0]
@@ -273,8 +263,8 @@ class SoftmaxNeuralNet:
         param_means = np.zeros(shape=(B, D+1))
         param_std_devs = np.zeros(shape=(B, D+1))
 
-        W_history = self.weight_history["W1"]
-        b_history = self.bias_history["b1"]
+        W_history = [store.get_W(1) for store in self.store_history]
+        b_history = [store.get_b(1) for store in self.store_history]
 
         B = W_history[0].shape[0]
         D = W_history[0].shape[1]
@@ -323,22 +313,21 @@ class SoftmaxNeuralNet:
 
         return True
 
-    def feature_overlaps_zero_for_class(self, feature_index, class_index, std_dev_multiplier):
-        mean = self.param_means[class_index, feature_index]
-        std_dev = self.param_std_devs[class_index, feature_index]
-
-        lower = mean - (std_dev_multiplier * std_dev)
-        upper = mean + (std_dev_multiplier * std_dev)
-        if lower[i] < 0 and upper[i] > 0:
-            return True
-        else:
-            return False
-
     def plot_cost(self):
         plt.figure()
         plt.plot(np.arange(len(self.costs)), self.costs)
         plt.xlabel("epochs")
         plt.ylabel("cost")
+        plt.show()
+
+    
+    def plot_U(self):
+        plt.figure()
+        U_arr = [store.get_U() for store in self.store_history]
+        x_arr = np.arange((len(U_arr)))
+        plt.plot(x_arr, U_arr)
+        plt.xlabel("epochs")
+        plt.ylabel("U")
         plt.show()
 
     def plot_final_weights(self, feature_names):
@@ -439,7 +428,7 @@ class SoftmaxNeuralNet:
         plt.show()
 
     def plot_sample_histogram(self):
-        W_history = self.weight_history["W" + str(self.L)]
+        W_history = [store.get_W(1) for store in self.store_history]
         n = len(W_history)
         values = [w[0, 0] for w in W_history]
         plt.hist(values)
@@ -451,7 +440,7 @@ class SoftmaxNeuralNet:
         plt.show()
 
     def plot_sample_history(self):
-        W_history = self.weight_history["W" + str(self.L)]
+        W_history = [store.get_W(1) for store in self.store_history]
 
         B = W_history[0].shape[0]
         D = W_history[0].shape[1]

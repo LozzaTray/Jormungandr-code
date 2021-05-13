@@ -15,11 +15,20 @@ def run():
     graph.mcmc(1000, verbose=False)
     graph.draw("maier-fb.png")
 
-    graph.plot_posterior_props()
-    classifier = graph.sample_classifier_marginals(2500, step_scaling=0.01, verbose=False)
-
+    #graph.plot_posterior_props()
     names = graph.get_feature_names()
 
+    # map classifier
+    # map_classifier = graph.train_map_classifier()
+    # map_classifier.plot_final_weights(names)
+
+
+    # classifier = graph.sample_classifier_marginals(2500, step_scaling=0.001, verbose=True)
+    classifier = graph.sample_classifier_mala(10000, step_scaling=0.001, verbose=True)
+
+
+    classifier.plot_U()
+    #classifier.plot_final_weights(names)
     classifier.sgld_sample_thinning()
     classifier.plot_sampled_weights(names, std_dev_multiplier=2, B_range=(0, 10))
     classifier.plot_sample_histogram()
