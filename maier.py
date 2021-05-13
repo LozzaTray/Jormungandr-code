@@ -15,7 +15,7 @@ def run():
     graph.mcmc(1000, verbose=False)
     graph.draw("maier-fb.png")
 
-    #graph.plot_posterior_props()
+    graph.plot_posterior_props()
     names = graph.get_feature_names()
 
     # map classifier
@@ -24,15 +24,16 @@ def run():
 
 
     # classifier = graph.sample_classifier_marginals(2500, step_scaling=0.001, verbose=True)
-    classifier = graph.sample_classifier_mala(10000, step_scaling=0.001, verbose=True)
-
-
-    classifier.plot_U()
-    #classifier.plot_final_weights(names)
+    classifier = graph.sample_classifier_mala(2500, step_scaling=0.001, verbose=True)
     classifier.sgld_sample_thinning()
-    classifier.plot_sampled_weights(names, std_dev_multiplier=2, B_range=(0, 10))
-    classifier.plot_sample_histogram()
-    classifier.plot_sample_history()
+
+
+    #classifier.plot_U()
+    #classifier.plot_final_weights(names)
+    classifier.plot_block_principal_dims(names.copy(), 1)
+    classifier.plot_sampled_weights(names.copy(), std_dev_multiplier=1, null_space=1)
+    #classifier.plot_sample_histogram()
+    #classifier.plot_sample_history()
 
 if __name__ == "__main__":
     print("Analysing Maier facebook friends")

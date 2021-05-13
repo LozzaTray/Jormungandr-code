@@ -443,11 +443,16 @@ class Graph_MCMC:
         if self.vertex_block_counts is not None:
             posterior = self.generate_posterior()
             block_counts = np.sum(posterior, axis=0)
-            x = np.arange(0, len(block_counts), 1)
+            B = len(block_counts)
+            x = np.arange(0, B, 1)
+            
             plt.bar(x, block_counts)
             plt.title("Block Membership Counts")
             plt.ylabel("Cumulative probability sum")
             plt.xlabel("Block index")
+
+            block_names = [str(num) for num in range(0, B)]
+            plt.xticks(ticks=x, labels=block_names)
             plt.show()
         else:
             raise Exception("Vertex block counts not initialised")
