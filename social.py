@@ -55,7 +55,7 @@ def mcmc():
     
     feature_names = graph.get_feature_names()
 
-    marginal_classifier.sgld_sample_thinning()
+    marginal_classifier.thin_samples()
     marginal_classifier.plot_sampled_weights(feature_names, std_dev_multiplier=2)
     marginal_classifier.plot_sample_histogram()
     marginal_classifier.plot_sample_history()

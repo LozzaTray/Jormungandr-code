@@ -66,6 +66,11 @@ class Graph_MCMC:
         self.G.set_directed(False)
         print("Vertex props: " + str(list(self.G.vertex_properties.keys())))
 
+    
+    def save_to_file(self, name):
+        filename = self.gen_output_path(name)
+        self.G.save(filename, fmt="gt")
+
 
     def filter_out_low_degree(self, min_degree):
         """Removes all vertices with degree strictly less than min_degree"""
@@ -108,7 +113,6 @@ class Graph_MCMC:
     def add_property(self, name, value_type, value_sequence):
         vertex_prop = self.G.new_vertex_property(value_type, value_sequence)
         self.G.vertex_properties[name] = vertex_prop # add to graph
-
 
     def remove_property(self, name):
         if name in self.G.vertex_properties:

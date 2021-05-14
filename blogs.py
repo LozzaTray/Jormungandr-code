@@ -12,9 +12,9 @@ def run():
     graph.mcmc(100, verbose=True)
 
     graph.draw("polblogs.png")
-    classifier = graph.sample_classifier_marginals(10000, step_scaling=0.01, verbose=True)
+    classifier = graph.sample_classifier_mala(10000, step_scaling=0.01, verbose=True)
 
-    classifier.sgld_sample_thinning()
+    classifier.thin_samples()
     classifier.plot_sampled_weights(["Right-Wingness"])
     classifier.plot_sample_histogram()
     classifier.plot_sample_history()

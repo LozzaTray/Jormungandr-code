@@ -207,7 +207,7 @@ class SoftmaxNeuralNet:
         self._compute_log_target(self.parameters, A, Y)
         return self.parameters.get_U()
 
-    def sgld_sample_thinning(self, burn_in_pc=10, thinning_pc=20):
+    def thin_samples(self, burn_in_pc=10, thinning_pc=20):
         """discard samples pre burn-in and only select keep thinning_pc of rest"""
         stop = len(self.store_history)
         start = int(stop * burn_in_pc / 100)

@@ -25,7 +25,7 @@ def run():
 
     # classifier = graph.sample_classifier_marginals(2500, step_scaling=0.001, verbose=True)
     classifier = graph.sample_classifier_mala(2500, step_scaling=0.001, verbose=True)
-    classifier.sgld_sample_thinning()
+    classifier.thin_samples()
 
 
     #classifier.plot_U()
