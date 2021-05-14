@@ -356,7 +356,7 @@ class SoftmaxNeuralNet:
         plt.legend()
         plt.show()
 
-    def plot_sampled_weights(self, feature_names, std_dev_multiplier=1, null_space=0, B_range=None):
+    def plot_sampled_weights(self, feature_names, std_dev_multiplier=1, null_space=0, B_range=None, legend=False):
         """Plot the sampled weights.
 
             Parameters:
@@ -416,11 +416,12 @@ class SoftmaxNeuralNet:
         plt.xlabel("Class label")
         plt.ylabel("Weight mean $\\pm {}\\sigma$".format(std_dev_multiplier))
         plt.grid()
-        plt.legend()
+        if legend:
+            plt.legend()
         plt.xticks(ticks=block_centres, labels=block_names)
         plt.show()
 
-    def plot_block_principal_dims(self, feature_names, cutoff, std_dev_multiplier=1, B_range=None):
+    def plot_block_principal_dims(self, feature_names, cutoff, std_dev_multiplier=1, B_range=None, legend=False):
         """Plots the top cutoff feature weights for each block"""
 
         D = self.layers_size[0]
@@ -459,7 +460,10 @@ class SoftmaxNeuralNet:
         plt.xlabel("Block label")
         plt.ylabel("Weight mean $\\pm {}\\sigma$".format(std_dev_multiplier))
         plt.grid()
-        plt.legend()
+        if legend:
+            plt.legend()
+        else:
+            plt.legend([])
         plt.xticks(ticks=block_centres, labels=block_names)
         plt.show()
 
@@ -492,7 +496,6 @@ class SoftmaxNeuralNet:
         plt.grid()
         plt.legend()
         plt.show()
-
 
     def plot_step_sizes(self, T):
         t_arr = np.arange(0, T)

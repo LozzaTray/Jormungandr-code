@@ -1,4 +1,3 @@
-from data.polblogs import PolBlog
 from model.graph_mcmc import Graph_MCMC
 
 
