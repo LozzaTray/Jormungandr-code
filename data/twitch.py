@@ -50,13 +50,14 @@ class TwitchGraph:
         feature_set = set()
 
         for features in self.node_features.values():
-            feature_set.union(features)
+            feature_set = feature_set.union(features)
 
         vertices = graph.get_vertex_list()
 
-        for feature_name in feature_set:
-            value_arr = [feature_name in self.node_features[vertex] for vertex in vertices]
-            graph.add_property(feature_name, "bool", value_arr)
+        for feat in feature_set:
+            readable_name = "feat-" + str(feat) 
+            value_arr = [feat in self.node_features[vertex] for vertex in vertices]
+            graph.add_property(readable_name, "bool", value_arr)
 
         return graph
         

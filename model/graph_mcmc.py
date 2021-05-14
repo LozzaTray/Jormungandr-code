@@ -104,10 +104,11 @@ class Graph_MCMC:
 
     def get_vertex_list(self):
         """Returns external view of vertices"""
+        internal_vertices = self.G.get_vertices()
         if self.relabelled_vertices is not None:
-            return self.relabelled_vertices.get_array()
+            return [self.relabelled_vertices[vertex] for vertex in internal_vertices]
         else:
-            return self.G.get_vertices()
+            return internal_vertices
 
 
     def add_property(self, name, value_type, value_sequence):

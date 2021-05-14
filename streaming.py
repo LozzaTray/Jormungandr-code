@@ -1,10 +1,19 @@
 from data.twitch import TwitchGraph
+from model.graph_mcmc import Graph_MCMC
 
-def run():
+def save():
     print("Loading data...")
     twitch = TwitchGraph()
     print("Converting to graph-tool...")
     graph = twitch.generate_mcmc_graph()
+    print("Saving to gt file...")
+    graph.save_to_file("twitch")
+    print("Done")
+
+def analyse():
+    print("Loading from file...")
+    graph = Graph_MCMC()
+    graph.read_from_file("twitch.gt")
     print("Done")
 
     graph.partition(B_min=4, B_max=20)
@@ -13,7 +22,6 @@ def run():
 
     graph.plot_posterior_props()
     names = graph.get_feature_names()
-
 
     # classifier = graph.sample_classifier_marginals(2500, step_scaling=0.001, verbose=True)
     classifier = graph.sample_classifier_mala(2500, step_scaling=0.001, verbose=True)
@@ -26,4 +34,4 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    analyse()
