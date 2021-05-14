@@ -35,20 +35,18 @@ class Graph_MCMC:
 
     def read_from_edges(self, edges):
         """Initialises graph based on edges"""
-        origin_vertices = set([edge[0] for edge in edges])
-        destin_vertices = set([edge[1] for edge in edges])
-
-        vertex_set = origin_vertices.union(destin_vertices)
-        
-        # constants
-        N = len(vertex_set)
-        M = len(edges)
-
         self.relabelled_vertices = self.G.add_edge_list(edges, hashed=True)
 
-        print("Initialised graph with N={} nodes and M={} edges".format(N, M))
 
-    
+
+    def print_info(self):
+        N = self.G.num_vertices()
+        E = self.G.num_edges()
+        D = len(self.G.vertex_properties)
+        print("Graph with N={} nodes, E={} edges and D={} vertex features".format(N, E, D))
+
+
+
     def read_from_file(self, filename):
         filename = get_misc_path(filename)
         self.G.load(filename)
