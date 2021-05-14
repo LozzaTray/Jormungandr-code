@@ -33,7 +33,6 @@ class Graph_MCMC:
         self.mcmc_args = {"entropy_args": self.entropy_args}
 
 
-
     def read_from_edges(self, edges):
         """Initialises graph based on edges"""
         origin_vertices = set([edge[0] for edge in edges])
@@ -245,13 +244,6 @@ class Graph_MCMC:
 
             posterior_probs[idx, 0:b] = probs[:]
 
-        # block_counts = np.sum(posterior_probs, axis=0)
-        # indices = np.argsort(block_counts)[::-1]
-
-        # sorted_posterior_probs = np.zeros((N, B))
-        # sorted_posterior_probs[:, :] = posterior_probs[:, indices]
-
-        # return sorted_posterior_probs
         return posterior_probs
 
     
@@ -281,7 +273,7 @@ class Graph_MCMC:
         return [key.replace("\x00", "-") for key in properties.keys()]
 
     
-    def sample_classifier_marginals(self, num_iter, step_scaling=1, sigma=1, verbose=False):
+    def sample_classifier_sgld(self, num_iter, step_scaling=1, sigma=1, verbose=False):
         if self.vertex_block_counts is None:
             print("Cannot sample without marginals")
         else:
@@ -296,10 +288,9 @@ class Graph_MCMC:
 
             for i in tqdm(range(0, num_iter)):
                 cost = classifier.sgld_iterate(X=X, Y=Y, step_scaling=step_scaling)
-                if verbose and i % 10 == 0:
-                    print("i: {}, cost: {}".format(i, cost))
 
             return classifier
+
 
     def sample_classifier_mala(self, num_iter, step_scaling=1, sigma=1, verbose=False):
         if self.state is None:
@@ -316,6 +307,7 @@ class Graph_MCMC:
 
             return classifier
     
+
     def sample_classifier_mcmc(self, num_iter, verbose=False):
         if self.state is None:
             print("No state partition detected >> ABORT")
@@ -353,7 +345,7 @@ class Graph_MCMC:
 
             return classifier
 
-    
+
     def gen_training_set(self, fraction):
         all_vertices = self.G.get_vertices()
         vertex_list = [vertex for vertex in all_vertices]
@@ -370,7 +362,6 @@ class Graph_MCMC:
         self.test_vertices = test_vertices
 
         
-
     def draw(self, output=None):
         output = self.gen_output_path(output)            
         if self.state is not None:

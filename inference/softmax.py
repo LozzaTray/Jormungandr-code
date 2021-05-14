@@ -159,7 +159,7 @@ class SoftmaxNeuralNet:
         num_accepted = 0
 
         for t in tqdm(range(0, num_iter)):
-            h = step_scaling * self.anneal_step_size(t)
+            h = step_scaling * self.anneal_step_size(t, self.n)
 
             final_store = initial_store.full_copy()
             final_store.langevin_iterate(h)
@@ -192,7 +192,7 @@ class SoftmaxNeuralNet:
     def sgld_iterate(self, X, Y, step_scaling=1):
         """Perform one iteration of sgld, returns previous cost"""
         self.n = X.shape[0]
-        step_size = step_scaling * self.anneal_step_size(self.t)
+        step_size = step_scaling * self.anneal_step_size(self.t, self.n)
         self.t += 1
 
         A = self._forward(X, self.parameters)
@@ -215,8 +215,8 @@ class SoftmaxNeuralNet:
 
         self.store_history = self.store_history[start:stop:step]
 
-    def anneal_step_size(self, t):
-        return self.a * math.pow(self.b + t, -1 * self.gamma)
+    def anneal_step_size(self, t, n):
+        return self.a * math.pow(self.b + t, -1 * self.gamma) / n
 
     def fit(self, X, Y, learning_rate=0.01, n_iterations=2500, seed=None, verbose=False):
         """
@@ -463,10 +463,10 @@ class SoftmaxNeuralNet:
         plt.xticks(ticks=block_centres, labels=block_names)
         plt.show()
 
-    def plot_sample_histogram(self):
+    def plot_sample_histogram(self, block_index=0, feat_index=0):
         W_history = [store.get_W(1) for store in self.store_history]
         n = len(W_history)
-        values = [w[0, 0] for w in W_history]
+        values = [w[block_index, feat_index] for w in W_history]
         plt.hist(values)
 
         plt.title("Weight samples (n={})".format(n))
@@ -492,6 +492,14 @@ class SoftmaxNeuralNet:
         plt.grid()
         plt.legend()
         plt.show()
+
+
+    def plot_step_sizes(self, T):
+        t_arr = np.arange(0, T)
+        sizes = [self.anneal_step_size(t, self.n) for t in t_arr]
+        plt.plot(t_arr, sizes)
+        plt.xlabel("iteration")
+        plt.ylabel("step sizes")
 
 
 def from_values_to_one_hot(y):
