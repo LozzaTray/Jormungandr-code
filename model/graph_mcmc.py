@@ -353,6 +353,22 @@ class Graph_MCMC:
 
             return classifier
 
+    
+    def gen_training_set(self, fraction):
+        all_vertices = self.G.get_vertices()
+        vertex_list = [vertex for vertex in all_vertices]
+
+        training_set_size = int(len(vertex_list) * fraction)
+        training_vertices = np.random.choice(vertex_list, size=training_set_size, replace=False)
+
+        self.training_vertices = training_vertices
+        
+        test_vertices = vertex_list.copy()
+        for vertex in self.training_vertices:
+            test_vertices.remove(vertex)
+
+        self.test_vertices = test_vertices
+
         
 
     def draw(self, output=None):
