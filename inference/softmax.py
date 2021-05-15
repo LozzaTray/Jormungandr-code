@@ -327,12 +327,14 @@ class SoftmaxNeuralNet:
 
     def plot_U(self):
         plt.figure()
-        U_arr = [store.get_U() for store in self.store_history]
+        U_arr = [store.get_U() / self.n for store in self.store_history]
         x_arr = np.arange((len(U_arr)))
         plt.plot(x_arr, U_arr)
         plt.xlabel("epochs")
-        plt.ylabel("U")
+        plt.ylabel("Normalised U")
+        plt.title("Negative log target distribution")
         plt.show()
+        return np.mean(U_arr)
 
     def plot_final_weights(self, feature_names):
         W = self.parameters.get_W(self.L)
