@@ -210,7 +210,6 @@ class Graph_MCMC:
         names = list(properties.keys())
         feature_names = [name for name in names if name.startswith("_") == False]
         return feature_names
-        
 
 
     # sampling methods
