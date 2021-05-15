@@ -15,6 +15,13 @@ curr_dir = os.path.dirname(__file__)
 output_dir = os.path.join(curr_dir, "..", "output")
 
 
+def gen_output_path(filename):
+    ## valid extensions: .pdf, .png, .svg
+    if filename is not None:
+        return os.path.join(output_dir, filename)
+    return None
+
+
 class Graph_MCMC:
 
 
@@ -33,19 +40,27 @@ class Graph_MCMC:
         self.mcmc_args = {"entropy_args": self.entropy_args}
 
 
-    def read_from_edges(self, edges):
-        """Initialises graph based on edges"""
-        self.relabelled_vertices = self.G.add_edge_list(edges, hashed=True)
-
-
-
+    # print helpers
     def print_info(self):
         N = self.G.num_vertices()
         E = self.G.num_edges()
-        D = len(self.G.vertex_properties)
-        print("Graph with N={} nodes, E={} edges and D={} vertex features".format(N, E, D))
+        D = len(self.get_feature_names())
+        print("Graph with N={} nodes, E={} edges and D={} vertex features for training".format(N, E, D))
+
+    
+    def print_props(self):
+        print("All vertex props: " + str(set(self.G.vertex_properties.keys())))
+        print("Training vertex props: " + str(self.get_feature_names()))
+
+    
+    def list_props(self):
+        self.G.list_properties()
 
 
+    # read helpers
+    def read_from_edges(self, edges):
+        """Initialises graph based on edges"""
+        self.relabelled_vertices = self.G.add_edge_list(edges, hashed=True)
 
     def read_from_file(self, filename):
         filename = get_misc_path(filename)
@@ -55,20 +70,20 @@ class Graph_MCMC:
     def read_from_gt(self, dataset_name):
         self.G = data[dataset_name]
         self.G.set_directed(False)
-        print("Vertex props: " + str(self.G.vertex_properties.keys()))
 
     
     def read_from_ns(self, dataset_name):
         self.G = ns[dataset_name]
         self.G.set_directed(False)
-        print("Vertex props: " + str(list(self.G.vertex_properties.keys())))
 
     
+    # save helpers
     def save_to_file(self, name):
-        filename = self.gen_output_path(name)
+        filename = gen_output_path(name)
         self.G.save(filename, fmt="gt")
 
 
+    # filter
     def filter_out_low_degree(self, min_degree):
         """Removes all vertices with degree strictly less than min_degree"""
         vertices = self.G.get_vertices()
@@ -108,9 +123,11 @@ class Graph_MCMC:
             return internal_vertices
 
 
+    # property methods
     def add_property(self, name, value_type, value_sequence):
         vertex_prop = self.G.new_vertex_property(value_type, value_sequence)
         self.G.vertex_properties[name] = vertex_prop # add to graph
+
 
     def remove_property(self, name):
         if name in self.G.vertex_properties:
@@ -120,12 +137,11 @@ class Graph_MCMC:
 
 
     def convert_props_to_flags(self):
-        properties = self.G.vertex_properties
         vertices = self.G.get_vertices()
-        property_names = list(properties.keys())
+        property_names = self.get_feature_names()
 
         for name in property_names:
-            value_map = properties[name]
+            value_map = self.get_property_map(name)
             value_type = value_map.value_type()
             if value_type == "string":
                 values = [value_map[vertex] for vertex in vertices]
@@ -163,8 +179,8 @@ class Graph_MCMC:
         if new_prop_name == "":
             new_prop_name = prop_name + "-"
 
-        if prop_name in self.G.vertex_properties:
-            value_map = self.G.vertex_properties[prop_name]
+        if prop_name in self.get_feature_names():
+            value_map = self.get_property_map(prop_name)
 
             values = [value_map[vertex] for vertex in vertices]
             distinct_values = set(values)
@@ -181,7 +197,23 @@ class Graph_MCMC:
         
             self.remove_property(prop_name)
 
+    
+    def get_property_map(self, prop_name):
+        property_map = self.G.vertex_properties[prop_name]
+        return property_map
 
+    
+    def get_feature_names(self):
+        """returns array of feature names"""
+        properties = self.G.vertex_properties
+        # return [key.replace("\x00", "-") for key in properties.keys()]
+        names = list(properties.keys())
+        feature_names = [name for name in names if name.startswith("_") == False]
+        return feature_names
+        
+
+
+    # sampling methods
     def partition(self, B_min=None, B_max=None, degree_corrected=True):
         """
         Performs MCMC algorithm to minimise description length (DL)
@@ -223,6 +255,7 @@ class Graph_MCMC:
         return self.B_max
 
 
+    # training methods
     def generate_posterior(self):
         """
         return Y: (N x B) matrix of posterior probabilities
@@ -250,7 +283,7 @@ class Graph_MCMC:
         return X: (N x D) matrix of node features
         X[n, d] = feature d of vertex n
         """
-        properties = self.G.vertex_properties
+        properties = self.get_feature_names()
         D = len(properties)
 
         vertices = self.G.get_vertices()
@@ -258,17 +291,12 @@ class Graph_MCMC:
         N = len(vertices)
         X = np.empty((N, D))
 
-        for prop_index, value_map in enumerate(properties.values()):
+        for prop_index, prop_name in enumerate(properties):
+            value_map = self.get_property_map(prop_name)
             for vertex_index, vertex_id in enumerate(vertices):
                 X[vertex_index, prop_index] = value_map[vertex_id]
         
         return X
-
-    
-    def get_feature_names(self):
-        """returns array of feature names"""
-        properties = self.G.vertex_properties
-        return [key.replace("\x00", "-") for key in properties.keys()]
 
     
     def sample_classifier_sgld(self, num_iter, step_scaling=1, sigma=1, verbose=False):
@@ -310,7 +338,7 @@ class Graph_MCMC:
         if self.state is None:
             print("No state partition detected >> ABORT")
         else:
-            properties = self.G.vertex_properties
+            properties = self.get_feature_names()
             D = len(properties)
 
             B = self.state.get_nonempty_B()
@@ -359,19 +387,25 @@ class Graph_MCMC:
 
         self.test_vertices = test_vertices
 
+    
+    # visualisation
+    def draw(self, output=None, gen_layout=True):
+        output = gen_output_path(output)
         
-    def draw(self, output=None):
-        output = self.gen_output_path(output)            
+        pos = None
+        if gen_layout == False and "_pos" in self.G.vertex_properties:
+            pos = self.G.vertex_properties["_pos"]
+
         if self.state is not None:
             if self.vertex_block_counts is not None:
                 print("Drawing soft partition")
-                self.state.draw(vertex_shape="pie", vertex_pie_fractions=self.vertex_block_counts, output=output)
+                self.state.draw(pos=pos, vertex_shape="pie", vertex_pie_fractions=self.vertex_block_counts, output=output)
             else:
                 print("Drawing hard state partition")
-                self.state.draw(output=output)
+                self.state.draw(pos=pos, output=output)
         else:
             print("No state partition detected >> draw default graph")
-            graph_draw(self.G, output=output)
+            graph_draw(self.G, pos=pos, output=output)
 
     
     def plot_matrix(self):
@@ -411,7 +445,7 @@ class Graph_MCMC:
     
     def plot_community_property_fractions(self):
         if self.state is not None:
-            properties = self.G.vertex_properties
+            properties = self.get_feature_names()
             num_properties = len(properties)
 
             blocks = self.state.get_blocks()
@@ -426,7 +460,8 @@ class Graph_MCMC:
             width = 0.8 / num_properties
             idx = 0
 
-            for prop_name, value_map in properties.items():
+            for prop_name in properties:
+                value_map = self.get_property_map(prop_name)
                 prop_counts = np.zeros(B)
 
                 for v in vertices:
@@ -466,11 +501,3 @@ class Graph_MCMC:
             plt.show()
         else:
             raise Exception("Vertex block counts not initialised")
-
-
-    def gen_output_path(self, filename):
-        ## valid extensions: .pdf, .png, .svg
-        if filename is not None:
-            return os.path.join(output_dir, filename)
-        return None
-
