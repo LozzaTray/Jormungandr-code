@@ -7,6 +7,7 @@ from scipy.stats import norm
 import math
 from inference.store import Store, compute_log_acceptance_prob
 from tqdm import tqdm
+from utils.colors import plt_color
 
 
 class SoftmaxNeuralNet:
@@ -316,6 +317,7 @@ class SoftmaxNeuralNet:
 
         return True
 
+    #p plot helpers
     def plot_cost(self):
         plt.figure()
         plt.plot(np.arange(len(self.costs)), self.costs)
@@ -381,8 +383,6 @@ class SoftmaxNeuralNet:
 
         self.compute_mean_variances()
 
-
-
         discarded_features = []
         for d in range(0, D + 1):
             if self.feature_overlaps_null(d, std_dev_multiplier, null_space=null_space):
@@ -395,15 +395,19 @@ class SoftmaxNeuralNet:
         width = 0.4 / eff_D
         midpoint = (eff_D - 1) / 2.0
 
+        plt.figure()
+        ax = plt.subplot(111)
+
         for d in range(0, D + 1):
             if d in discarded_features:
                 pass
             else:
+                color = plt_color(d)
                 mean = self.param_means[:, d][B_range[0]: B_range[1]]
                 std_dev = self.param_std_devs[:, d][B_range[0]: B_range[1]]
 
                 x = np.arange(0, B, 1) + (width * (eff_d - midpoint))
-                plt.errorbar(x=x, y=mean, fmt=".", yerr=std_dev *
+                ax.errorbar(x=x, y=mean, color=color, fmt=".", yerr=std_dev *
                              std_dev_multiplier, label=feature_names[d])
 
                 eff_d += 1
@@ -413,11 +417,15 @@ class SoftmaxNeuralNet:
 
         plt.title(
             "Sampled softmax weightings (null threshold={})".format(null_space))
-        plt.xlabel("Class label")
+        plt.xlabel("Block index")
         plt.ylabel("Weight mean $\\pm {}\\sigma$".format(std_dev_multiplier))
         plt.grid()
         if legend:
-            plt.legend()
+            box = ax.get_position()
+            ax.set_position([box.x0, box.y0 + box.height * 0.1, box.width, box.height * 0.9])
+            ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), fancybox=True, shadow=True, ncol=5)
+        else:
+            plt.legend([])
         plt.xticks(ticks=block_centres, labels=block_names)
         plt.show()
 
@@ -438,6 +446,7 @@ class SoftmaxNeuralNet:
         midpoint = (cutoff - 1) / 2.0
 
         plt.figure()
+        ax = plt.subplot(111)
         for b in range(B_range[0], B_range[1]):
 
             mean = self.param_means[b, :]
@@ -449,19 +458,22 @@ class SoftmaxNeuralNet:
 
             for i in range(0, cutoff):
                 feat_index = top_indices[i]
+                color = plt_color(feat_index)
                 pos = b + width * (i - midpoint)
-                plt.errorbar(x=pos, y=mean[feat_index], fmt=".",
+                ax.errorbar(x=pos, y=mean[feat_index], color=color, fmt=".",
                              yerr=std_dev[feat_index], label=feature_names[feat_index])
 
         block_centres = np.arange(0, B, 1)
         block_names = [str(num) for num in range(0, B)]
 
         plt.title("Top weight parameters for each block (cutoff={})".format(cutoff))
-        plt.xlabel("Block label")
+        plt.xlabel("Block index")
         plt.ylabel("Weight mean $\\pm {}\\sigma$".format(std_dev_multiplier))
         plt.grid()
         if legend:
-            plt.legend()
+            box = ax.get_position()
+            ax.set_position([box.x0, box.y0 + box.height * 0.1, box.width, box.height * 0.9])
+            ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), fancybox=True, shadow=True, ncol=5)
         else:
             plt.legend([])
         plt.xticks(ticks=block_centres, labels=block_names)
@@ -483,8 +495,6 @@ class SoftmaxNeuralNet:
         W_history = [store.get_W(1) for store in self.store_history]
 
         B = W_history[0].shape[0]
-        D = W_history[0].shape[1]
-        n = len(W_history)
 
         for b in range(0, B):
             mean = [np.mean(w[b, :]) for w in W_history]

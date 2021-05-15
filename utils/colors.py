@@ -13,3 +13,7 @@ def color_between(val, start_col="blue", end_col="red", resolution=10):
     end = Color(end_col)
     index = math.floor(val * resolution)
     return list(start.range_to(end, resolution))[index].hex
+
+
+def plt_color(index):
+    return "C" + str(index)
