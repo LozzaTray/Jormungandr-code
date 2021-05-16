@@ -388,8 +388,9 @@ class Graph_MCMC:
 
     
     # visualisation
-    def draw(self, output=None, gen_layout=True):
+    def draw(self, output=None, gen_layout=True, size=5):
         output = gen_output_path(output)
+        vprops = {"size": size}
         
         pos = None
         if gen_layout == False and "_pos" in self.G.vertex_properties:
@@ -398,13 +399,13 @@ class Graph_MCMC:
         if self.state is not None:
             if self.vertex_block_counts is not None:
                 print("Drawing soft partition")
-                self.state.draw(pos=pos, vertex_shape="pie", vertex_pie_fractions=self.vertex_block_counts, output=output)
+                self.state.draw(pos=pos, vertex_shape="pie", vprops=vprops, vertex_pie_fractions=self.vertex_block_counts, output=output)
             else:
                 print("Drawing hard state partition")
-                self.state.draw(pos=pos, output=output)
+                self.state.draw(pos=pos, vprops=vprops, output=output)
         else:
             print("No state partition detected >> draw default graph")
-            graph_draw(self.G, pos=pos, output=output)
+            graph_draw(self.G, pos=pos, vprops=vprops, output=output)
 
     
     def plot_matrix(self):
