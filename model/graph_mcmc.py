@@ -227,21 +227,26 @@ class Graph_MCMC:
     def mcmc(self, num_iter, verbose=False):
         """
         Performs mcmc sampling of posterior on blocks
-        returns: B_max - the highest number of blocks across samples
+        returns: av_entropy_per_node - average netropy per node
         """
         bs = [] # collect some partitions
+        sum_entropy = 0
 
         def collect_partitions(s):
             bs.append(s.b.a.copy())
 
+        current_entropy = self.state.entropy(partition_dl=False) # must specify manually
+
+        interval = num_iter // 10
+
         for i in tqdm(range(0, num_iter)):
                 dS, nattempts, nmoves = self.state.mcmc_sweep(niter=1, d=0.00, entropy_args=self.entropy_args)
-                collect_partitions(self.state)
-                if verbose and i % 10 == 0:
-                    print("i: {}, dS: {}, nattempts: {}, nmoves: {}".format(i, dS, nattempts, nmoves))
+                current_entropy += dS
+                sum_entropy += current_entropy
 
-        # mcmc_equilibrate(self.state, force_niter=num_iter, callback=collect_partitions, mcmc_args={"d": 0.00}, verbose=verbose)
-        # BUG: parameter not passed through correctly
+                collect_partitions(self.state)
+                if verbose and i % interval == 0:
+                    print("i: {}, dS: {}, nattempts: {}, nmoves: {}".format(i, dS, nattempts, nmoves))
 
         # Disambiguate partitions and obtain marginals
         pmode = PartitionModeState(bs, converge=True, relabel=True)
@@ -251,7 +256,13 @@ class Graph_MCMC:
         # visualize them as pie charts on the nodes:
         self.vertex_block_counts = pv
         self.B_max = pmode.get_B()
-        return self.B_max
+        
+        #calc av entropy
+        av_entropy_per_node = sum_entropy / (num_iter * self.G.num_vertices())
+        if verbose:
+            print("Average per node entropy: " + str(av_entropy_per_node))
+            
+        return av_entropy_per_node
 
 
     # training methods
@@ -410,11 +421,19 @@ class Graph_MCMC:
     
     def plot_matrix(self):
         if self.state is not None:
-            print("Drawing block adjacency matrix")
+            print("Drawing block adjacency matrix $e_{rs}$")
             block_adjacency_matrix = self.state.get_matrix()
-            plt.matshow(block_adjacency_matrix.todense())
-            plt.title("Block Adjacency Matrix")
-            plt.colorbar()
+
+            plt.figure()
+            ax = plt.subplot(111)
+
+            ax.matshow(block_adjacency_matrix.todense())
+            ax.title("Block Adjacency Matrix")
+            ax.ylabel("Block index $r$")
+            ax.xlabel("Block index $s$")
+            ax.xaxis.set_label_position("top")
+            ax.colorbar()
+            
             plt.show()
         else:
             print("No state partition detected >> cannot draw matrix")
