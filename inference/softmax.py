@@ -360,7 +360,7 @@ class SoftmaxNeuralNet:
         plt.legend()
         plt.show()
 
-    def plot_sampled_weights(self, feature_names, std_dev_multiplier=1, null_space=0, B_range=None, legend=False):
+    def plot_sampled_weights(self, feature_names, std_dev_multiplier=1, null_space=0, B_range=None, legend=False, ncol=5):
         """Plot the sampled weights.
 
             Parameters:
@@ -425,7 +425,7 @@ class SoftmaxNeuralNet:
         if legend:
             box = ax.get_position()
             ax.set_position([box.x0, box.y0 + box.height * 0.1, box.width, box.height * 0.9])
-            ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), fancybox=True, shadow=True, ncol=5)
+            ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), fancybox=True, shadow=True, ncol=ncol)
         else:
             plt.legend([])
         plt.xticks(ticks=block_centres, labels=block_names)
@@ -515,7 +515,6 @@ class SoftmaxNeuralNet:
         plt.plot(t_arr, sizes)
         plt.xlabel("iteration")
         plt.ylabel("step sizes")
-
 
     def plot_sample_matrix(self):
         self.compute_mean_variances()
