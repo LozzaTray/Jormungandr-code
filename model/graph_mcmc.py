@@ -135,6 +135,14 @@ class Graph_MCMC:
             return True
         return False
 
+    
+    def rename_property(self, old_name, new_name):
+        if old_name in self.G.vertex_properties:
+            self.G.vertex_properties[new_name] = self.G.vertex_properties[old_name]
+            del self.G.vertex_properties[old_name]
+            return True
+        return False
+
 
     def convert_props_to_flags(self):
         vertices = self.G.get_vertices()
@@ -424,15 +432,15 @@ class Graph_MCMC:
             print("Drawing block adjacency matrix $e_{rs}$")
             block_adjacency_matrix = self.state.get_matrix()
 
-            plt.figure()
+            fig = plt.figure()
             ax = plt.subplot(111)
 
-            ax.matshow(block_adjacency_matrix.todense())
-            ax.set_title("Block Adjacency Matrix")
+            mat = ax.matshow(block_adjacency_matrix.todense())
+            ax.set_title("Block Adjacency Matrix $e_{rs}$")
             ax.set_ylabel("Block index $r$")
             ax.set_xlabel("Block index $s$")
             ax.xaxis.set_label_position("top")
-            ax.set_colorbar()
+            fig.colorbar(mat)
             
             plt.show()
         else:

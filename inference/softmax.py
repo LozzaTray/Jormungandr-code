@@ -517,6 +517,21 @@ class SoftmaxNeuralNet:
         plt.ylabel("step sizes")
 
 
+    def plot_sample_matrix(self):
+        self.compute_mean_variances()
+
+        fig = plt.figure()
+        ax = plt.subplot(111)
+
+        mat = ax.matshow(self.param_means)
+        ax.set_title("Sampled weight matrix mean $W$")
+        ax.set_ylabel("Block index")
+        ax.set_xlabel("Feature index")
+        ax.xaxis.set_label_position("top")
+        fig.colorbar(mat)
+        
+        plt.show()
+
 def from_values_to_one_hot(y):
     y = np.array(y)
     enc = OneHotEncoder(sparse=False, categories='auto')
