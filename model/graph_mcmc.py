@@ -428,11 +428,11 @@ class Graph_MCMC:
             ax = plt.subplot(111)
 
             ax.matshow(block_adjacency_matrix.todense())
-            ax.title("Block Adjacency Matrix")
-            ax.ylabel("Block index $r$")
-            ax.xlabel("Block index $s$")
+            ax.set_title("Block Adjacency Matrix")
+            ax.set_ylabel("Block index $r$")
+            ax.set_xlabel("Block index $s$")
             ax.xaxis.set_label_position("top")
-            ax.colorbar()
+            ax.set_colorbar()
             
             plt.show()
         else:
