@@ -360,7 +360,7 @@ class SoftmaxNeuralNet:
         plt.legend()
         plt.show()
 
-    def plot_sampled_weights(self, feature_names, std_dev_multiplier=1, null_space=0, B_range=None, legend=False, ncol=5):
+    def plot_sampled_weights(self, feature_names, std_dev_multiplier=1, null_space=0, B_range=None, legend=False, ncol=5, color_order=True):
         """Plot the sampled weights.
 
             Parameters:
@@ -389,7 +389,8 @@ class SoftmaxNeuralNet:
         for d in range(0, D + 1):
             if self.feature_overlaps_null(d, std_dev_multiplier, null_space=null_space):
                 discarded_features.append(d)
-                print("Discarding feature {}: {}".format(d, feature_names[d]))
+        
+        print("Discarded {} features".format(len(discarded_features))
 
         eff_D = D + 1 - len(discarded_features)
         eff_d = 0
@@ -404,13 +405,17 @@ class SoftmaxNeuralNet:
             if d in discarded_features:
                 pass
             else:
-                color = plt_color(d)
                 mean = self.param_means[:, d][B_range[0]: B_range[1]]
                 std_dev = self.param_std_devs[:, d][B_range[0]: B_range[1]]
 
                 x = np.arange(0, B, 1) + (width * (eff_d - midpoint))
+
+                color=None
+                if color_order:
+                    color = plt_color(d)
+
                 ax.errorbar(x=x, y=mean, color=color, fmt=".", yerr=std_dev *
-                             std_dev_multiplier, label=feature_names[d])
+                            std_dev_multiplier, label=feature_names[d])
 
                 eff_d += 1
 
