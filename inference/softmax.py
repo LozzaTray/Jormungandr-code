@@ -123,17 +123,27 @@ class SoftmaxNeuralNet:
             store.set_dW(dW, l)
             store.set_db(db, l)
 
-    def _compute_log_target(self, store, A, Y):
-        """Computes -ve log target and places in store"""
-        log_posterior = np.sum(Y * np.log(A.T + 1e-8))  # -ve of cross-entropy
+    def _compute_log_likelihood(self, A, Y):
+        """Computes log likelihood (-ve cross entropy loss)"""
+        return np.sum(Y * np.log(A.T + 1e-8))
+
+    def _compute_log_prior(self, store):
         log_prior = 0
         for l in range(1, self.L+1):
             weight_term = norm.logpdf(store.get_W(l), scale=self.sigma).sum()
             bias_term = norm.logpdf(store.get_b(l), scale=self.sigma).sum()
             log_prior = log_prior + weight_term + bias_term
 
+        return log_prior
+
+    def _compute_minus_log_target(self, store, A, Y):
+        """Computes -ve log target (posterior/joint) and returns it"""
+        log_posterior = self._compute_log_likelihood(
+            A, Y)  # -ve of cross-entropy
+        log_prior = self._compute_log_prior(store)
+
         U = - (log_posterior + log_prior)
-        store.set_U(U)
+        return U
 
     def sgld_initialise(self):
         """Initilaise SGLD - Stochastic Gradient Langevin Diffusion for MCMC sampling form posterior"""
@@ -155,7 +165,8 @@ class SoftmaxNeuralNet:
         initial_store = self.parameters.full_copy()
         A = self._forward(X, initial_store)
         self._compute_grad_U(X, Y, initial_store)
-        self._compute_log_target(initial_store, A, Y)
+        U = self._compute_minus_log_target(initial_store, A, Y)
+        initial_store.set_U(U)
 
         num_accepted = 0
 
@@ -166,7 +177,8 @@ class SoftmaxNeuralNet:
             final_store.langevin_iterate(h)
             A = self._forward(X, final_store)
             self._compute_grad_U(X, Y, final_store)
-            self._compute_log_target(final_store, A, Y)
+            U = self._compute_minus_log_target(final_store, A, Y)
+            final_store.set_U(U)
 
             log_alpha = compute_log_acceptance_prob(
                 initial_store, final_store, h)
@@ -205,7 +217,8 @@ class SoftmaxNeuralNet:
         self.store_history.append(self.parameters.shallow_copy())
 
         A = self._forward(X, self.parameters)
-        self._compute_log_target(self.parameters, A, Y)
+        U = self._compute_minus_log_target(self.parameters, A, Y)
+        self.parameters.set_U(U)
         return self.parameters.get_U()
 
     def thin_samples(self, burn_in_pc=10, thinning_pc=20):
@@ -257,6 +270,22 @@ class SoftmaxNeuralNet:
         Y = np.argmax(Y, axis=1)
         accuracy = (y_hat == Y).mean()
         return accuracy
+
+    def average_loss_per_point(self, X, Y, include_prior=False):
+        cum_loss = 0
+        T = len(self.store_history)
+        N = X.shape[0]
+        assert N == Y.shape[0]
+
+        for store in self.store_history:
+            A = self._forward(X, store)
+            C = - self._compute_log_likelihood(A, Y)
+            if include_prior == True:
+                C = C - self._compute_log_prior(store)
+
+            cum_loss += C
+
+        return cum_loss / (T * N)
 
     def compute_mean_variances(self):
         D = self.layers_size[0]
@@ -317,7 +346,29 @@ class SoftmaxNeuralNet:
 
         return True
 
-    #p plot helpers
+    def gen_principal_feature_indices(self, std_dev_multiplier, null_space):
+        """
+        Return array of indices which survive the discard step
+
+            Parameters:
+                std_dev_multiplier (float): equiv to k
+                null_space (float): equiv to c
+
+            Returns:
+                kept_indices (int[]): array of kept indices
+        """
+        D = self.layers_size[0]
+
+        kept_features = []
+        for d in range(0, D + 1):
+            if self.feature_overlaps_null(d, std_dev_multiplier, null_space=null_space):
+                pass
+            else:
+                kept_features.append(d)
+
+        return kept_features
+
+    # p plot helpers
     def plot_cost(self):
         plt.figure()
         plt.plot(np.arange(len(self.costs)), self.costs)
@@ -370,7 +421,7 @@ class SoftmaxNeuralNet:
                 B_range ((int, int)): tuple of ints specifying lower and upper B cutoff
 
             Returns:
-                None. Just plot the samples
+                kept_features (int[]): array of kept indices
         """
 
         D = self.layers_size[0]
@@ -385,15 +436,11 @@ class SoftmaxNeuralNet:
 
         self.compute_mean_variances()
 
-        discarded_features = []
-        for d in range(0, D + 1):
-            if self.feature_overlaps_null(d, std_dev_multiplier, null_space=null_space):
-                discarded_features.append(d)
-        
-        print("Discarded {} features".format(len(discarded_features))
+        kept_features = self.gen_principal_feature_indices(
+            std_dev_multiplier, null_space)
+        eff_D = len(kept_features)
 
-        eff_D = D + 1 - len(discarded_features)
-        eff_d = 0
+        print("Discarded {} features".format(D + 1 - eff_D))
 
         width = 0.4 / eff_D
         midpoint = (eff_D - 1) / 2.0
@@ -401,23 +448,21 @@ class SoftmaxNeuralNet:
         plt.figure()
         ax = plt.subplot(111)
 
-        for d in range(0, D + 1):
-            if d in discarded_features:
-                pass
-            else:
-                mean = self.param_means[:, d][B_range[0]: B_range[1]]
-                std_dev = self.param_std_devs[:, d][B_range[0]: B_range[1]]
+        eff_d = 0
+        for d in kept_features:
+            mean = self.param_means[:, d][B_range[0]: B_range[1]]
+            std_dev = self.param_std_devs[:, d][B_range[0]: B_range[1]]
 
-                x = np.arange(0, B, 1) + (width * (eff_d - midpoint))
+            x = np.arange(0, B, 1) + (width * (eff_d - midpoint))
 
-                color=None
-                if color_order:
-                    color = plt_color(d)
+            color = None
+            if color_order:
+                color = plt_color(d)
 
-                ax.errorbar(x=x, y=mean, color=color, fmt=".", yerr=std_dev *
-                            std_dev_multiplier, label=feature_names[d])
+            ax.errorbar(x=x, y=mean, color=color, fmt=".", yerr=std_dev *
+                        std_dev_multiplier, label=feature_names[d])
 
-                eff_d += 1
+            eff_d += 1
 
         block_centres = np.arange(0, B, 1)
         block_names = [str(num) for num in range(0, B)]
@@ -429,12 +474,20 @@ class SoftmaxNeuralNet:
         plt.grid()
         if legend:
             box = ax.get_position()
-            ax.set_position([box.x0, box.y0 + box.height * 0.1, box.width, box.height * 0.9])
-            ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), fancybox=True, shadow=True, ncol=ncol)
+            ax.set_position([box.x0, box.y0 + box.height *
+                            0.1, box.width, box.height * 0.9])
+            ax.legend(loc='upper center', bbox_to_anchor=(
+                0.5, -0.2), fancybox=True, shadow=True, ncol=ncol)
         else:
             plt.legend([])
         plt.xticks(ticks=block_centres, labels=block_names)
         plt.show()
+
+        # remove bias if present for external view
+        if kept_features[-1] == D:
+            kept_features = kept_features[:-1]
+
+        return kept_features
 
     def plot_block_principal_dims(self, feature_names, cutoff, std_dev_multiplier=1, B_range=None, legend=False):
         """Plots the top cutoff feature weights for each block"""
@@ -468,7 +521,7 @@ class SoftmaxNeuralNet:
                 color = plt_color(feat_index)
                 pos = b + width * (i - midpoint)
                 ax.errorbar(x=pos, y=mean[feat_index], color=color, fmt=".",
-                             yerr=std_dev[feat_index], label=feature_names[feat_index])
+                            yerr=std_dev[feat_index], label=feature_names[feat_index])
 
         block_centres = np.arange(0, B, 1)
         block_names = [str(num) for num in range(0, B)]
@@ -479,8 +532,10 @@ class SoftmaxNeuralNet:
         plt.grid()
         if legend:
             box = ax.get_position()
-            ax.set_position([box.x0, box.y0 + box.height * 0.1, box.width, box.height * 0.9])
-            ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), fancybox=True, shadow=True, ncol=5)
+            ax.set_position([box.x0, box.y0 + box.height *
+                            0.1, box.width, box.height * 0.9])
+            ax.legend(loc='upper center', bbox_to_anchor=(
+                0.5, -0.2), fancybox=True, shadow=True, ncol=5)
         else:
             plt.legend([])
         plt.xticks(ticks=block_centres, labels=block_names)
@@ -533,8 +588,9 @@ class SoftmaxNeuralNet:
         ax.set_xlabel("Feature index")
         ax.xaxis.set_label_position("top")
         fig.colorbar(mat)
-        
+
         plt.show()
+
 
 def from_values_to_one_hot(y):
     y = np.array(y)
