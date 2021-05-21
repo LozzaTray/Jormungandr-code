@@ -266,11 +266,12 @@ class Graph_MCMC:
         self.B_max = pmode.get_B()
         
         #calc av entropy
-        av_entropy_per_node = sum_entropy / (num_iter * self.G.num_vertices())
+        num_entities = self.G.num_vertices() + self.G.num_edges()
+        av_entropy_per_entity = sum_entropy / (num_iter * num_entities)
         if verbose:
-            print("Average per node entropy: " + str(av_entropy_per_node))
+            print("Average per node entropy: " + str(av_entropy_per_entity))
             
-        return av_entropy_per_node
+        return av_entropy_per_entity
 
 
     # training methods
