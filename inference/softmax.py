@@ -516,7 +516,7 @@ class SoftmaxNeuralNet:
         block_names = [str(num) for num in range(0, B)]
 
         plt.title(
-            "Top {} feature weights ($k={}$)".format(eff_D, round(std_dev_multiplier, 2)))
+            "Top $D'={}$ feature weights ($k={}$)".format(eff_D, round(std_dev_multiplier, 2)))
         plt.xlabel("Block index")
         plt.ylabel("Weight mean $\\mu \\pm k\\sigma$".format(std_dev_multiplier))
         plt.grid()
@@ -525,7 +525,7 @@ class SoftmaxNeuralNet:
             ax.set_position([box.x0, box.y0 + box.height *
                             0.1, box.width, box.height * 0.9])
             ax.legend(loc='upper center', bbox_to_anchor=(
-                0.5, -0.2), fancybox=True, shadow=True, ncol=ncol)
+                0.45, -0.3), fancybox=True, shadow=True, ncol=ncol)
         else:
             plt.legend([])
         plt.xticks(ticks=block_centres, labels=block_names)

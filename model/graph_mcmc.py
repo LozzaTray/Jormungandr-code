@@ -3,7 +3,7 @@ import numpy as np
 from graph_tool import Graph as GT_Graph
 # X-server must be running else import will timeout
 from graph_tool.draw import graph_draw
-from graph_tool.inference import minimize_blockmodel_dl, mcmc_equilibrate, PartitionModeState
+from graph_tool.inference import minimize_blockmodel_dl, mcmc_equilibrate, PartitionModeState, NestedBlockState
 from graph_tool.collection import data, ns
 import matplotlib.pyplot as plt
 from inference.softmax import SoftmaxNeuralNet, from_values_to_one_hot
@@ -269,6 +269,7 @@ class Graph_MCMC:
         # visualize them as pie charts on the nodes:
         self.vertex_block_counts = pv
         self.B_max = pmode.get_B()
+        self.pmode = pmode
         
         #calc av entropy
         num_entities = self.G.num_vertices() + self.G.num_edges()
@@ -413,7 +414,7 @@ class Graph_MCMC:
 
     
     # visualisation
-    def draw(self, output=None, gen_layout=True, size=5):
+    def draw(self, output=None, gen_layout=True, size=5, circular=True):
         output = gen_output_path(output)
         vprops = {"size": size}
         
@@ -424,7 +425,13 @@ class Graph_MCMC:
         if self.state is not None:
             if self.vertex_block_counts is not None:
                 print("Drawing soft partition")
-                self.state.draw(pos=pos, vertex_shape="pie", vprops=vprops, vertex_pie_fractions=self.vertex_block_counts, output=output)
+                if circular:
+                    b = self.pmode.get_max(self.G)
+                    bs = [b, np.zeros(self.B_max)]
+                    nestedState = NestedBlockState(self.G, bs=bs)
+                    nestedState.draw(vertex_shape="pie", vertex_pie_fractions=self.vertex_block_counts, output=output)   
+                else:
+                    self.state.draw(pos=pos, vertex_shape="pie", vprops=vprops, vertex_pie_fractions=self.vertex_block_counts, output=output)
             else:
                 print("Drawing hard state partition")
                 self.state.draw(pos=pos, vprops=vprops, output=output)
