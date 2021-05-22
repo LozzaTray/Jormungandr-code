@@ -516,9 +516,9 @@ class SoftmaxNeuralNet:
         block_names = [str(num) for num in range(0, B)]
 
         plt.title(
-            "Top {} feature weights (null threshold={})".format(eff_D, round(null_space, 2)))
+            "Top {} feature weights ($k={}$)".format(eff_D, round(std_dev_multiplier, 2)))
         plt.xlabel("Block index")
-        plt.ylabel("Weight mean $\\pm {}\\sigma$".format(std_dev_multiplier))
+        plt.ylabel("Weight mean $\\mu \\pm k\\sigma$".format(std_dev_multiplier))
         plt.grid()
         if legend:
             box = ax.get_position()
@@ -574,9 +574,9 @@ class SoftmaxNeuralNet:
         block_centres = np.arange(0, B, 1)
         block_names = [str(num) for num in range(0, B)]
 
-        plt.title("Top weight parameters for each block (cutoff={})".format(cutoff))
+        plt.title("Top weight parameters for each block (cutoff={}, k={})".format(cutoff, std_dev_multiplier))
         plt.xlabel("Block index")
-        plt.ylabel("Weight mean $\\pm {}\\sigma$".format(std_dev_multiplier))
+        plt.ylabel("Weight mean $\\mu \\pm k\\sigma$")
         plt.grid()
         if legend:
             box = ax.get_position()
