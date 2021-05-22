@@ -41,15 +41,17 @@ fb_args = {
     "f": 0.7,
     "Tb": 1000,
     "Tt": 10000,
-    "s": 0.2,
+    "s": 0.017,
     "burn-in": 0.4,
     "thinning": 10,
     "k": 1,
     "D'": 10,
     "burn-in-red": 0.4,
     "thinning-red": 10,
-    "s-red": 0.2
+    "s-red": 0.5
 }
+
+
 
 
 def create_polbooks_graph():
@@ -125,7 +127,8 @@ def latex_print(means, std_devs, dp=3):
 def run(verbose=False):
 
     #graph, args = create_polbooks_graph()
-    graph, args = create_school_graph()
+    #graph, args = create_school_graph()
+    graph, args = create_fb_graph()
 
     
     graph.print_info()
@@ -189,6 +192,7 @@ if __name__ == "__main__":
     results_arr = []
     num_iter = 10
     for i in range(0, num_iter):
+        print("~~~~~~~~~~~~~~ ITERATION {}/{} ~~~~~~~~~~~~~~~".format(i+1, num_iter))
         res = run()
         results_arr.append(res)
 
