@@ -221,11 +221,11 @@ class SoftmaxNeuralNet:
         self.parameters.set_U(U)
         return self.parameters.get_U()
 
-    def thin_samples(self, burn_in_pc=10, thinning_pc=20):
+    def thin_samples(self, burn_in=0.1, thin_factor=5):
         """discard samples pre burn-in and only select keep thinning_pc of rest"""
         stop = len(self.store_history)
-        start = int(stop * burn_in_pc / 100)
-        step = int(100 / thinning_pc)
+        start = int(stop * burn_in)
+        step = thin_factor
 
         self.store_history = self.store_history[start:stop:step]
 
@@ -368,6 +368,46 @@ class SoftmaxNeuralNet:
 
         return kept_features
 
+    def gen_top_feature_indices(self, std_dev_multiplier, D_reduced):
+        """
+        Return array of indices which survive the discard step
+
+            Parameters:
+                std_dev_multiplier (float): equiv to k
+                D_reduced (int): number of features to kepp
+
+            Returns:
+                kept_indices (int[]): array of kept indices
+                cutoff (float): maximum cutoff employed
+        """
+        D = self.layers_size[0]
+
+        kept_features = []
+        cutoff_arr = np.empty(D)
+        for d in range(0, D): # do not consider bias
+            means = self.param_means[:, d]
+            std_devs = self.param_std_devs[:, d]
+
+            lower = means - (std_dev_multiplier * std_devs)
+            upper = means + (std_dev_multiplier * std_devs)
+
+            min_abs = np.empty_like(lower)
+            for i in range(0, len(lower)):
+                val = min(abs(lower[i]), abs(upper[i]))
+                if lower[i] < 0 and upper[i] > 0:
+                    val = 0
+                min_abs[i] = val
+
+            cutoff_arr[d] = max(min_abs)
+
+        indices = np.argsort(cutoff_arr)[::-1]
+        top_indices = indices[0:D_reduced]
+        max_cutoff = cutoff_arr[top_indices[-1]]
+
+        print("Max cutoff: {}".format(max_cutoff))
+
+        return np.sort(top_indices), max_cutoff
+
     # p plot helpers
     def plot_cost(self):
         plt.figure()
@@ -381,9 +421,9 @@ class SoftmaxNeuralNet:
         U_arr = [store.get_U() / self.n for store in self.store_history]
         x_arr = np.arange((len(U_arr)))
         plt.plot(x_arr, U_arr)
-        plt.xlabel("epochs")
-        plt.ylabel("Normalised U")
-        plt.title("Negative log target distribution")
+        plt.xlabel("Iteration $t$")
+        plt.ylabel("Normalised log-target $U(\\theta^{(t)})/N$")
+        plt.title("Normalised log-target against iteration")
         plt.show()
         return np.mean(U_arr)
 
@@ -411,7 +451,7 @@ class SoftmaxNeuralNet:
         plt.legend()
         plt.show()
 
-    def plot_sampled_weights(self, feature_names, std_dev_multiplier=1, null_space=0, B_range=None, legend=False, ncol=5, color_order=True):
+    def plot_sampled_weights(self, feature_names, std_dev_multiplier=1, null_space=0, B_range=None, legend=False, ncol=5, color_order=True, D_reduced=None):
         """Plot the sampled weights.
 
             Parameters:
@@ -419,6 +459,10 @@ class SoftmaxNeuralNet:
                 std_dev_multiplier (float): how many std devs to consider when disregarding
                 null_space (float): the distance from 0 we consider null
                 B_range ((int, int)): tuple of ints specifying lower and upper B cutoff
+                legend (bool): whether to show legend
+                ncol (int): number of columns for legend
+                color_order (bool): whether to override color ordering
+                D_reduced (int): if supplied overrides to just use top D_reduced features and returns the maximal cutoff
 
             Returns:
                 kept_features (int[]): array of kept indices
@@ -436,8 +480,12 @@ class SoftmaxNeuralNet:
 
         self.compute_mean_variances()
 
-        kept_features = self.gen_principal_feature_indices(
-            std_dev_multiplier, null_space)
+        kept_features = []
+        if D_reduced is None:
+            kept_features = self.gen_principal_feature_indices(
+                std_dev_multiplier, null_space)
+        else:
+            kept_features, null_space = self.gen_top_feature_indices(std_dev_multiplier, D_reduced)
         eff_D = len(kept_features)
 
         print("Discarded {} features".format(D + 1 - eff_D))
@@ -468,7 +516,7 @@ class SoftmaxNeuralNet:
         block_names = [str(num) for num in range(0, B)]
 
         plt.title(
-            "Sampled softmax weightings (null threshold={})".format(null_space))
+            "Top {} feature weights (null threshold={})".format(eff_D, round(null_space, 2)))
         plt.xlabel("Block index")
         plt.ylabel("Weight mean $\\pm {}\\sigma$".format(std_dev_multiplier))
         plt.grid()
@@ -573,8 +621,9 @@ class SoftmaxNeuralNet:
         t_arr = np.arange(0, T)
         sizes = [self.anneal_step_size(t, self.n) for t in t_arr]
         plt.plot(t_arr, sizes)
-        plt.xlabel("iteration")
-        plt.ylabel("step sizes")
+        plt.title("Step-size annealing ($s=1, N={}$)".format(self.n))
+        plt.xlabel("Epoch $t$")
+        plt.ylabel("Step sizes $h_t$")
 
     def plot_sample_matrix(self):
         self.compute_mean_variances()

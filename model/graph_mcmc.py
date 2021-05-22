@@ -232,7 +232,7 @@ class Graph_MCMC:
         return self.state.get_blocks()
 
     
-    def mcmc(self, num_iter, verbose=False):
+    def mcmc(self, num_iter=10000, burn_in=0.20, thinning=5, verbose=False):
         """
         Performs mcmc sampling of posterior on blocks
         returns: av_entropy_per_node - average netropy per node
@@ -246,17 +246,22 @@ class Graph_MCMC:
         current_entropy = self.state.entropy(partition_dl=False) # must specify manually
 
         interval = num_iter // 10
+        start = int(burn_in*num_iter)
 
         for i in tqdm(range(0, num_iter)):
                 dS, nattempts, nmoves = self.state.mcmc_sweep(niter=1, d=0.00, entropy_args=self.entropy_args)
                 current_entropy += dS
-                sum_entropy += current_entropy
+                offset = i - start
 
-                collect_partitions(self.state)
-                if verbose and i % interval == 0:
-                    print("i: {}, dS: {}, nattempts: {}, nmoves: {}".format(i, dS, nattempts, nmoves))
+                if offset >= 0 and offset % thinning == 0:
+                    sum_entropy += current_entropy
+                    collect_partitions(self.state)
+                    if verbose and i % interval == 0:
+                        print("i: {}, dS: {}, nattempts: {}, nmoves: {}".format(i, dS, nattempts, nmoves))
+
 
         # Disambiguate partitions and obtain marginals
+        num_iter_kept = len(bs)
         pmode = PartitionModeState(bs, converge=True, relabel=True)
         pv = pmode.get_marginal(self.G)
 
@@ -267,7 +272,7 @@ class Graph_MCMC:
         
         #calc av entropy
         num_entities = self.G.num_vertices() + self.G.num_edges()
-        av_entropy_per_entity = sum_entropy / (num_iter * num_entities)
+        av_entropy_per_entity = sum_entropy / (num_iter_kept * num_entities)
         if verbose:
             print("Average per node entropy: " + str(av_entropy_per_entity))
             
