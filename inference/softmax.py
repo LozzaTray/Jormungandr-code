@@ -513,7 +513,7 @@ class SoftmaxNeuralNet:
             eff_d += 1
 
         block_centres = np.arange(0, B, 1)
-        block_names = [str(num) for num in range(0, B)]
+        block_names = [str(num) for num in range(1, B+1)]
 
         plt.title(
             "Top $D'={}$ feature weights ($k={}$)".format(eff_D, round(std_dev_multiplier, 2)))
