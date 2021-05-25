@@ -4,26 +4,24 @@ from scipy.stats import norm
 
 class Store:
 
-    def __init__(self, W={}, b={}, dW={}, db={}, A={}, Z={}, U=None):
+    def __init__(self, W={}, dW={}, A={}, Z={}, U=None):
         self.W = W
-        self.b = b
         self.dW = dW
-        self.db = db
         self.A = A
         self.Z = Z
         self.U = U
 
     def shallow_copy(self):
         """Creates a new store object with W, b and U copied through"""
-        new_store = Store(self.W.copy(), self.b.copy())
+        new_store = Store(self.W.copy())
         new_store.set_U(self.U)
         return new_store
 
     def full_copy(self):
         """Creates a new store object with all props copied through"""
         new_store = Store(
-            self.W.copy(), self.b.copy(), self.dW.copy(),
-            self.db.copy(), self.A.copy(), self.Z.copy(),
+            self.W.copy(), self.dW.copy(),
+            self.A.copy(), self.Z.copy(),
             self.U
         )
         return new_store
@@ -36,26 +34,12 @@ class Store:
     def set_W(self, W_instance, l):
         self.W[l] = W_instance
 
-    # bias vectors
-    def get_b(self, l):
-        return self.b[l]
-
-    def set_b(self, b_instance, l):
-        self.b[l] = b_instance
-
     # weight derivatives
     def get_dW(self, l):
         return self.dW[l]
 
     def set_dW(self, dW_instance, l):
         self.dW[l] = dW_instance
-
-    # bias dervatives
-    def get_db(self, l):
-        return self.db[l]
-
-    def set_db(self, db_instance, l):
-        self.db[l] = db_instance
 
     # activation output vector
     def get_A(self, l):
@@ -92,7 +76,6 @@ class Store:
 
         for l in self.W.keys():
             self.W[l] = self.W[l] - step_size * self.dW[l]
-            self.b[l] = self.b[l] - step_size * self.db[l]
 
     def add_gaussian_noise(self, std_dev):
         """
@@ -107,10 +90,7 @@ class Store:
 
         for l in self.W.keys():
             W = self.W[l]
-            b = self.b[l]
-
             self.W[l] = W + std_dev * np.random.randn(*W.shape)
-            self.b[l] = b + std_dev * np.random.randn(*b.shape)
 
 
     def langevin_iterate(self, h):
@@ -146,12 +126,7 @@ def log_prob_transition(initial, final):
     for l in initial.W.keys():
         W_initial = initial.get_W(l)
         W_final = final.get_W(l)
-
-        b_initial = initial.get_b(l)
-        b_final = final.get_b(l)
-
         cum_sum += norm.logpdf(W_final - W_initial).sum()
-        cum_sum += norm.logpdf(b_final - b_initial).sum()
 
     return cum_sum
 
