@@ -151,9 +151,9 @@ def latex_print(means, std_devs, dp=3):
 
 def run(verbose=False):
 
-    graph, args = create_polbooks_graph()
+    #graph, args = create_polbooks_graph()
     #graph, args = create_school_graph()
-    #graph, args = create_fb_graph()
+    graph, args = create_fb_graph()
     #graph, args = create_maier_graph()
 
     graph.print_info()
