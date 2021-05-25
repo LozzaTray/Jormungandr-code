@@ -1,7 +1,8 @@
 # adapted from http://www.adeveloperdiary.com/data-science/deep-learning/neural-network-with-softmax-in-python/
 
 import numpy as np
-import matplotlib.pylab as plt
+import matplotlib.pyplot as plt
+from numpy.core.shape_base import block
 from sklearn.preprocessing import OneHotEncoder
 from scipy.stats import norm
 import math
@@ -287,6 +288,46 @@ class SoftmaxNeuralNet:
 
         return cum_loss / (T * N)
 
+    def loss_per_class(self, X, Y):
+        """Treat as 2 class problem and compute mean loss"""
+        T = len(self.store_history)
+        N = X.shape[0]
+        assert N == Y.shape[0]
+        B = Y.shape[1]
+
+        cum_loss = np.zeros(B)
+
+        for store in self.store_history:
+            A = self._forward(X, store)
+            for b in range(0, B):
+                yb = Y[:, b]
+                ab = A.T[:, b]
+                cum_loss[b] += - np.sum(yb * np.log(ab + 1e-8) +
+                                        (1 - yb) * np.log(1 - ab + 1e-8))
+
+        return cum_loss / (T * N)
+
+    def accuracy_per_class(self, X, Y):
+        N = X.shape[0]
+        assert N == Y.shape[0]
+        B = Y.shape[1]
+
+        num_correct = np.zeros(B)
+        num_total = np.zeros(B)
+
+        for store in self.store_history:
+            A = self._forward(X, store)
+            for i in range(0, N):
+                predicted_block = np.argmax(A.T[i, :])
+                true_block = np.argmax(Y[i, :])
+
+                num_total[true_block] += 1
+
+                if predicted_block == true_block:
+                    num_correct[true_block] += 1
+
+        return num_correct / num_total
+
     def compute_mean_variances(self):
         D = self.layers_size[0]
         B = self.layers_size[1]
@@ -384,7 +425,7 @@ class SoftmaxNeuralNet:
 
         kept_features = []
         cutoff_arr = np.empty(D)
-        for d in range(0, D): # do not consider bias
+        for d in range(0, D):  # do not consider bias
             means = self.param_means[:, d]
             std_devs = self.param_std_devs[:, d]
 
@@ -416,16 +457,69 @@ class SoftmaxNeuralNet:
         plt.ylabel("cost")
         plt.show()
 
-    def plot_U(self):
+    def plot_U(self, title="Normalised log-target against iteration", index_symbol="t"):
         plt.figure()
         U_arr = [store.get_U() / self.n for store in self.store_history]
         x_arr = np.arange((len(U_arr)))
         plt.plot(x_arr, U_arr)
-        plt.xlabel("Iteration $t$")
-        plt.ylabel("Normalised log-target $U(\\theta^{(t)})/N$")
-        plt.title("Normalised log-target against iteration")
+        plt.xlabel("Index $"+ index_symbol + "$")
+        plt.ylabel(r"$U \left( \theta^{(" + index_symbol + r")} \right) / N$")
+        plt.title(title)
         plt.show()
         return np.mean(U_arr)
+
+    def plot_losses_per_class(self, X_train, Y_train, X_test, Y_test):
+        B = Y_train.shape[1]
+
+        block_centres = np.arange(0, B, 1)
+        block_names = [str(num) for num in range(1, B+1)]
+
+        train_loss = self.loss_per_class(X_train, Y_train)
+        test_loss = self.loss_per_class(X_test, Y_test)
+
+        plt.figure()
+        ax = plt.subplot(111)
+        plt.bar(block_centres-0.2, train_loss,
+                width=0.4, label="Training set loss")
+        plt.bar(block_centres+0.2, test_loss, width=0.4, label="Test set loss")
+        plt.title("Binary cross-entropy losses for each block")
+        plt.xlabel("Block index")
+        plt.ylabel("Average loss")
+        plt.grid()
+        box = ax.get_position()
+        ax.set_position([box.x0, box.y0 + box.height *
+                         0.1, box.width, box.height * 0.9])
+        ax.legend(loc='upper center', bbox_to_anchor=(
+            0.45, -0.3), fancybox=True, shadow=True)
+        plt.xticks(ticks=block_centres, labels=block_names)
+        plt.show()
+
+    def plot_accuracy_per_class(self, X_train, Y_train, X_test, Y_test):
+        B = Y_train.shape[1]
+
+        block_centres = np.arange(0, B, 1)
+        block_names = [str(num) for num in range(1, B+1)]
+
+        train_acc = self.accuracy_per_class(X_train, Y_train)
+        test_acc = self.accuracy_per_class(X_test, Y_test)
+
+        plt.figure()
+        ax = plt.subplot(111)
+        plt.bar(block_centres-0.2, train_acc,
+                width=0.4, label="Training set")
+        plt.bar(block_centres+0.2, test_acc, width=0.4, label="Test set")
+        plt.title("Prediction accuracy per block")
+        plt.xlabel("Block Index")
+        plt.ylabel("Accuracy")
+        plt.grid()
+        plt.ylim((0,1))
+        box = ax.get_position()
+        ax.set_position([box.x0, box.y0 + box.height *
+                         0.1, box.width, box.height * 0.9])
+        ax.legend(loc='upper center', bbox_to_anchor=(
+            0.45, -0.3), fancybox=True, shadow=True)
+        plt.xticks(ticks=block_centres, labels=block_names)
+        plt.show()
 
     def plot_final_weights(self, feature_names):
         W = self.parameters.get_W(self.L)
@@ -485,7 +579,8 @@ class SoftmaxNeuralNet:
             kept_features = self.gen_principal_feature_indices(
                 std_dev_multiplier, null_space)
         else:
-            kept_features, null_space = self.gen_top_feature_indices(std_dev_multiplier, D_reduced)
+            kept_features, null_space = self.gen_top_feature_indices(
+                std_dev_multiplier, D_reduced)
         eff_D = len(kept_features)
 
         print("Discarded {} features".format(D + 1 - eff_D))
@@ -515,10 +610,15 @@ class SoftmaxNeuralNet:
         block_centres = np.arange(0, B, 1)
         block_names = [str(num) for num in range(1, B+1)]
 
+        ax.axhline(abs(null_space), linestyle="--", color="gray")
+        ax.axhline(0, linestyle="-", color="black")
+        ax.axhline(-abs(null_space), linestyle="--", color="gray")
+
         plt.title(
             "Top $D'={}$ feature weights ($k={}$)".format(eff_D, round(std_dev_multiplier, 2)))
         plt.xlabel("Block index")
-        plt.ylabel("Weight mean $\\mu \\pm k\\sigma$".format(std_dev_multiplier))
+        plt.ylabel("Weight mean $\\mu \\pm k\\sigma$".format(
+            std_dev_multiplier))
         plt.grid()
         if legend:
             box = ax.get_position()
@@ -574,7 +674,8 @@ class SoftmaxNeuralNet:
         block_centres = np.arange(0, B, 1)
         block_names = [str(num) for num in range(0, B)]
 
-        plt.title("Top weight parameters for each block (cutoff={}, k={})".format(cutoff, std_dev_multiplier))
+        plt.title("Top weight parameters for each block (cutoff={}, k={})".format(
+            cutoff, std_dev_multiplier))
         plt.xlabel("Block index")
         plt.ylabel("Weight mean $\\mu \\pm k\\sigma$")
         plt.grid()

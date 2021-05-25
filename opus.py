@@ -73,6 +73,31 @@ def create_school_graph():
     return graph, school_args
 
 
+def create_maier_graph():
+    graph = Graph_MCMC()
+    graph.read_from_ns("facebook_friends")
+    graph.convert_props_to_flags()
+    graph.add_ego_node()
+    graph.filter_out_low_degree(min_degree=2)
+    args = {
+        "B": 18,
+        "f": 0.7,
+        "Tb": 1000,
+        "Tt": 10000,
+        "s": 0.2,
+        "burn-in": 0.4,
+        "thinning": 10,
+        "k": 1,
+        "D'": 18,
+        "burn-in-red": 0.4,
+        "thinning-red": 10,
+        "s-red": 0.5
+    }
+
+    return graph, args
+
+
+
 def create_fb_graph():
     
     class Graph_Custom (Graph_MCMC):
@@ -126,11 +151,11 @@ def latex_print(means, std_devs, dp=3):
 
 def run(verbose=False):
 
-    #graph, args = create_polbooks_graph()
+    graph, args = create_polbooks_graph()
     #graph, args = create_school_graph()
-    graph, args = create_fb_graph()
+    #graph, args = create_fb_graph()
+    #graph, args = create_maier_graph()
 
-    
     graph.print_info()
     graph.partition(B_min=args["B"], B_max=args["B"])
 
@@ -184,6 +209,18 @@ def run(verbose=False):
         graph.draw(gen_layout=False, size=7)
         classifier.plot_U()
         reduced_classifier.plot_U()
+
+    train_loss_arr = classifier.loss_per_class(X_train, Y_train)
+    test_loss_arr = classifier.loss_per_class(X_test, Y_test)
+    print("\n Losses per class \n")
+    print(train_loss_arr)
+    print(test_loss_arr)
+
+    train_accuracy = classifier.accuracy_per_class(X_train, Y_train)
+    test_accuracy = classifier.accuracy_per_class(X_test, Y_test)
+    print("\n Accuracy per class \n")
+    print(train_accuracy)
+    print(test_accuracy)
 
     return results
 
