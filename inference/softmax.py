@@ -442,8 +442,10 @@ class SoftmaxNeuralNet:
         U_arr = [store.get_U() / self.n for store in self.store_history]
         x_arr = np.arange((len(U_arr)))
         plt.plot(x_arr, U_arr)
+        plt.xlim((x_arr[0], x_arr[-1] + 1))
         plt.xlabel("Index $"+ index_symbol + "$")
         plt.ylabel(r"$U \left( \theta^{(" + index_symbol + r")} \right) / N$")
+        plt.grid()
         plt.title(title)
         plt.show()
         return np.mean(U_arr)
