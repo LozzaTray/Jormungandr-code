@@ -9,6 +9,7 @@ import math
 from inference.store import Store, compute_log_acceptance_prob
 from tqdm import tqdm
 from utils.colors import plt_color
+import matplotlib.mlab as mlab
 
 
 class SoftmaxNeuralNet:
@@ -681,9 +682,15 @@ class SoftmaxNeuralNet:
         W_history = [store.get_W(1) for store in self.store_history]
         n = len(W_history)
         values = [w[block_index, feat_index] for w in W_history]
-        plt.hist(values)
+        mean = np.mean(values)
+        std = np.std(values)
 
-        plt.title("Weight samples (n={})".format(n))
+        x, bins, p = plt.hist(values, density=True)
+        y = norm.pdf(bins, loc=mean, scale=std)
+        l = plt.plot(bins, y, '--')
+
+        weight = r"$W_{"+ str(block_index+1) + r"," + str(feat_index+1) + r"}$"
+        plt.title(weight + " samples (n={})".format(n))
         plt.xlabel("Value")
         plt.ylabel("Frequency")
         plt.grid()
