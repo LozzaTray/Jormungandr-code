@@ -316,6 +316,11 @@ class SoftmaxNeuralNet:
 
         return num_correct / num_total
 
+    def mean_std_normalised_U(self):
+        U_arr = [store.get_U() / self.n for store in self.store_history]
+        return np.mean(U_arr), np.std(U_arr)
+
+        
     def compute_mean_variances(self):
         D = self.layers_size[0]
         B = self.layers_size[1]
