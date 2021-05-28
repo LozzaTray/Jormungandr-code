@@ -1,3 +1,4 @@
+from graph_tool.inference.blockmodel import BlockState
 import numpy as np
 # version focal seems to be winner
 from graph_tool import Graph as GT_Graph
@@ -221,6 +222,13 @@ class Graph_MCMC:
 
 
     # sampling methods
+    def random_initial_state(self, B):
+        """Intialises state randomly"""
+        N = self.G.num_vertices()
+        b = np.random.choice(np.arange(0,B,1), size=N)
+        self.state = BlockState(self.G, b=b, B=B)
+
+
     def partition(self, B_min=None, B_max=None, degree_corrected=True):
         """
         Performs MCMC algorithm to minimise description length (DL)
@@ -239,11 +247,14 @@ class Graph_MCMC:
         """
         bs = [] # collect some partitions
         sum_entropy = 0
+        num_entities = self.G.num_vertices() + self.G.num_edges()
+
 
         def collect_partitions(s):
             bs.append(s.b.a.copy())
 
         current_entropy = self.state.entropy(partition_dl=False) # must specify manually
+        self.entropy_arr = np.zeros(num_iter)
 
         interval = num_iter // 10
         start = int(burn_in*num_iter)
@@ -252,6 +263,7 @@ class Graph_MCMC:
                 dS, nattempts, nmoves = self.state.mcmc_sweep(niter=1, d=0.00, entropy_args=self.entropy_args)
                 current_entropy += dS
                 offset = i - start
+                self.entropy_arr[i] = current_entropy / num_entities
 
                 if offset >= 0 and offset % thinning == 0:
                     sum_entropy += current_entropy
@@ -272,7 +284,6 @@ class Graph_MCMC:
         self.pmode = pmode
         
         #calc av entropy
-        num_entities = self.G.num_vertices() + self.G.num_edges()
         av_entropy_per_entity = sum_entropy / (num_iter_kept * num_entities)
         if verbose:
             print("Average per node entropy: " + str(av_entropy_per_entity))
