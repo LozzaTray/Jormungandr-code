@@ -482,7 +482,7 @@ class SoftmaxNeuralNet:
         plt.xticks(ticks=block_centres, labels=block_names)
         plt.show()
 
-    def plot_accuracy_per_class(self, X_train, Y_train, X_test, Y_test):
+    def plot_accuracy_per_class(self, X_train, Y_train, X_test, Y_test, title="Block accuracy"):
         B = Y_train.shape[1]
 
         block_centres = np.arange(0, B, 1)
@@ -494,18 +494,18 @@ class SoftmaxNeuralNet:
         plt.figure()
         ax = plt.subplot(111)
         plt.bar(block_centres-0.2, train_acc,
-                width=0.4, label="Training set")
-        plt.bar(block_centres+0.2, test_acc, width=0.4, label="Test set")
-        plt.title("Prediction accuracy per block")
-        plt.xlabel("Block Index")
-        plt.ylabel("Accuracy")
+                width=0.4, label=r"Training set")
+        plt.bar(block_centres+0.2, test_acc, width=0.4, label=r"Test set")
+        plt.title(title)
+        plt.xlabel(r"Block Index $j$")
+        plt.ylabel(r"Block accuracy $\eta(j)$")
         plt.grid()
         plt.ylim((0,1))
         box = ax.get_position()
         ax.set_position([box.x0, box.y0 + box.height *
                          0.1, box.width, box.height * 0.9])
         ax.legend(loc='upper center', bbox_to_anchor=(
-            0.45, -0.3), fancybox=True, shadow=True)
+            0.45, -0.3), fancybox=True, shadow=True, ncol=2)
         plt.xticks(ticks=block_centres, labels=block_names)
         plt.show()
 
